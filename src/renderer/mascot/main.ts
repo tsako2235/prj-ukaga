@@ -125,9 +125,18 @@ async function main(): Promise<void> {
   })
 
   balloon = createBalloon(appRoot, {
+    initialPosition: {
+      x: settings.balloon?.x ?? 12,
+      y: settings.balloon?.y ?? 12,
+    },
     onBeforeSend: () => {
       player.clear()
       balloon.showWarning(null)
+    },
+    onPositionChange: (pos) => {
+      void window.ukaga.setSettings({
+        patch: { balloon: { x: pos.x, y: pos.y } },
+      })
     },
   })
 
@@ -144,6 +153,9 @@ async function main(): Promise<void> {
     settings = next
     volumeScale = next.voice.volumeScale
     emotionMap = next.character.emotionMap
+    if (next.balloon) {
+      balloon.setPosition({ x: next.balloon.x, y: next.balloon.y })
+    }
     // スケールが変わったときだけ再レイアウト（他設定のトグルで拡大しない）
     if (next.character.scale !== prevScale) {
       stage.setUserScale(next.character.scale)

@@ -1,8 +1,8 @@
 #balloon {
   position: absolute;
   left: 12px;
-  right: 12px;
   top: 12px;
+  width: min(396px, calc(100% - 24px));
   z-index: 10;
   opacity: 0;
   pointer-events: none;
@@ -15,6 +15,13 @@
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
+}
+
+#balloon.dragging {
+  transition: none;
+  opacity: 1;
+  pointer-events: auto;
+  cursor: grabbing;
 }
 
 .balloon-body {
@@ -33,10 +40,21 @@
   align-items: center;
   gap: 4px;
   margin: -2px -2px 4px 0;
+  cursor: grab;
+  user-select: none;
+  min-height: 24px;
+}
+
+.balloon-drag-hint {
+  margin-right: auto;
+  color: #bbb;
+  font-size: 11px;
+  letter-spacing: -2px;
+  padding: 0 4px;
+  pointer-events: none;
 }
 
 .balloon-history {
-  margin-right: auto;
   border: 1px solid rgba(0, 0, 0, 0.12);
   background: #fff;
   color: #555;

@@ -3,7 +3,7 @@ import { join } from 'path'
 import type { AppSettings } from '../../shared/settings'
 
 const FALLBACK_WIDTH = 420
-const FALLBACK_HEIGHT = 720
+const FALLBACK_HEIGHT = 880
 
 /**
  * 透過・フレームレス・最前面のマスコットウィンドウを生成する
@@ -14,7 +14,9 @@ export function createMascotWindow(
   const display = screen.getPrimaryDisplay()
   const { width: screenW, height: screenH } = display.workAreaSize
   const width = windowSettings?.width ?? FALLBACK_WIDTH
-  const height = windowSettings?.height ?? FALLBACK_HEIGHT
+  // 旧既定 720 のまま残っている場合は吹き出し用に少し高くする
+  const rawHeight = windowSettings?.height ?? FALLBACK_HEIGHT
+  const height = rawHeight < FALLBACK_HEIGHT ? FALLBACK_HEIGHT : rawHeight
   const x =
     windowSettings?.x ?? Math.round(screenW - width - 40)
   const y =

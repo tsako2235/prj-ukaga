@@ -38,6 +38,11 @@ export interface AppSettings {
     /** ON のときバルーンに感情タグ（[happy] 等）を表示する */
     enabled: boolean
   }
+  /** マスコットウィンドウ内の吹き出し位置（px） */
+  balloon: {
+    x: number
+    y: number
+  }
   window: {
     x?: number
     y?: number
@@ -86,8 +91,12 @@ export const DEFAULT_SETTINGS: AppSettings = {
   debug: {
     enabled: false,
   },
+  balloon: {
+    x: 12,
+    y: 12,
+  },
   window: {
     width: 420,
-    height: 720,
+    height: 880,
   },
 }

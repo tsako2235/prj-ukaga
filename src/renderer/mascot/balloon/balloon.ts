@@ -1,10 +1,21 @@
 const FADE_MS = 10_000
 const MAX_LOG = 80
+const DEFAULT_X = 12
+const DEFAULT_Y = 12
+const EDGE_PAD = 4
+/** 非表示時など offset が 0 のときのフォールバック */
+const MIN_PANEL_W = 160
+const MIN_PANEL_H = 100
 
 type LogLine = {
   role: 'user' | 'assistant'
   text: string
   emotion?: string
+}
+
+export type BalloonPosition = {
+  x: number
+  y: number
 }
 
 export type BalloonController = {
@@ -14,16 +25,21 @@ export type BalloonController = {
   appendAssistant: (text: string, emotion?: string) => void
   showWarning: (message: string | null) => void
   bumpFade: () => void
+  setPosition: (pos: BalloonPosition) => void
+  getPosition: () => BalloonPosition
   dispose: () => void
 }
 
 export type BalloonOptions = {
   onBeforeSend?: () => void
+  initialPosition?: BalloonPosition
+  onPositionChange?: (pos: BalloonPosition) => void
 }
 
 /**
  * 吹き出し UI（発話・入力・思考中・エラー）
  * 通常は直近ターンのみ表示。過去ログは「履歴」で展開。
+ * ツールバーをドラッグして位置移動（設定に永続化）。
  */
 export function createBalloon(
   root: HTMLElement,
@@ -33,7 +49,8 @@ export function createBalloon(
   panel.id = 'balloon'
   panel.innerHTML = `
     <div class="balloon-body">
-      <div class="balloon-toolbar">
+      <div class="balloon-toolbar" id="balloon-toolbar" title="ドラッグして移動">
+        <span class="balloon-drag-hint" aria-hidden="true">⋮⋮</span>
         <button type="button" class="balloon-history" id="balloon-history" disabled>
           履歴
         </button>
@@ -64,6 +81,7 @@ export function createBalloon(
   const input = panel.querySelector('#balloon-input') as HTMLInputElement
   const closeBtn = panel.querySelector('#balloon-close') as HTMLButtonElement
   const historyBtn = panel.querySelector('#balloon-history') as HTMLButtonElement
+  const toolbar = panel.querySelector('#balloon-toolbar') as HTMLElement
 
   /** セッション内の全ログ（LLM 履歴とは別） */
   const log: LogLine[] = []
@@ -71,15 +89,41 @@ export function createBalloon(
   let currentTurn: LogLine[] = []
   let historyOpen = false
   let fadeTimer: ReturnType<typeof setTimeout> | null = null
+  let pos: BalloonPosition = {
+    x: options.initialPosition?.x ?? DEFAULT_X,
+    y: options.initialPosition?.y ?? DEFAULT_Y,
+  }
+
+  let dragging = false
+  let dragOffsetX = 0
+  let dragOffsetY = 0
+
+  function applyPosition(next: BalloonPosition, clamp = true): void {
+    const parent = root
+    const panelW = Math.max(MIN_PANEL_W, panel.offsetWidth)
+    const panelH = Math.max(MIN_PANEL_H, panel.offsetHeight)
+    const maxX = Math.max(EDGE_PAD, parent.clientWidth - panelW - EDGE_PAD)
+    const maxY = Math.max(EDGE_PAD, parent.clientHeight - panelH - EDGE_PAD)
+    const x = clamp ? Math.min(maxX, Math.max(EDGE_PAD, next.x)) : next.x
+    const y = clamp ? Math.min(maxY, Math.max(EDGE_PAD, next.y)) : next.y
+    pos = { x, y }
+    panel.style.left = `${x}px`
+    panel.style.top = `${y}px`
+  }
 
   function setVisible(next: boolean): void {
     panel.classList.toggle('visible', next)
     if (!next && document.activeElement === input) {
       input.blur()
     }
+    if (next) {
+      // 表示時にサイズが分かるのでクランプし直す
+      requestAnimationFrame(() => applyPosition(pos, true))
+    }
   }
 
   function bumpFade(): void {
+    if (dragging) return
     if (fadeTimer) clearTimeout(fadeTimer)
     setVisible(true)
     fadeTimer = setTimeout(() => {
@@ -172,6 +216,37 @@ export function createBalloon(
     renderMessages()
   }
 
+  function isInteractiveTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof Element)) return false
+    return Boolean(
+      target.closest(
+        'button, input, textarea, select, a, .balloon-messages, .balloon-form',
+      ),
+    )
+  }
+
+  function onDragMove(event: MouseEvent): void {
+    if (!dragging) return
+    const parentRect = root.getBoundingClientRect()
+    applyPosition(
+      {
+        x: event.clientX - parentRect.left - dragOffsetX,
+        y: event.clientY - parentRect.top - dragOffsetY,
+      },
+      true,
+    )
+  }
+
+  function onDragEnd(): void {
+    if (!dragging) return
+    dragging = false
+    panel.classList.remove('dragging')
+    window.removeEventListener('mousemove', onDragMove)
+    window.removeEventListener('mouseup', onDragEnd)
+    options.onPositionChange?.({ ...pos })
+    bumpFade()
+  }
+
   form.addEventListener('submit', (event) => {
     event.preventDefault()
     const text = input.value.trim()
@@ -187,6 +262,21 @@ export function createBalloon(
     event.stopPropagation()
     bumpFade()
     window.ukaga.setIgnoreMouseEvents({ ignore: false })
+  })
+
+  toolbar.addEventListener('mousedown', (event) => {
+    if (event.button !== 0) return
+    if (isInteractiveTarget(event.target)) return
+    event.preventDefault()
+    event.stopPropagation()
+    dragging = true
+    panel.classList.add('dragging')
+    if (fadeTimer) clearTimeout(fadeTimer)
+    const rect = panel.getBoundingClientRect()
+    dragOffsetX = event.clientX - rect.left
+    dragOffsetY = event.clientY - rect.top
+    window.addEventListener('mousemove', onDragMove)
+    window.addEventListener('mouseup', onDragEnd)
   })
 
   closeBtn.addEventListener('click', (event) => {
@@ -212,6 +302,11 @@ export function createBalloon(
     event.preventDefault()
     hide()
   })
+
+  const onResize = () => {
+    applyPosition(pos, true)
+  }
+  window.addEventListener('resize', onResize)
 
   const unsubThinking = window.ukaga.onThinking(({ thinking }) => {
     statusEl.hidden = !thinking
@@ -246,7 +341,8 @@ export function createBalloon(
     bumpFade()
   })
 
-  // 起動時は閉じた状態（発話・クリックで開く）
+  // 初期位置を適用（起動時は閉じた状態）
+  applyPosition(pos, false)
   setVisible(false)
   renderMessages()
 
@@ -278,8 +374,17 @@ export function createBalloon(
       bumpFade()
     },
     bumpFade,
+    setPosition(next: BalloonPosition): void {
+      applyPosition(next, true)
+    },
+    getPosition(): BalloonPosition {
+      return { ...pos }
+    },
     dispose(): void {
       if (fadeTimer) clearTimeout(fadeTimer)
+      window.removeEventListener('mousemove', onDragMove)
+      window.removeEventListener('mouseup', onDragEnd)
+      window.removeEventListener('resize', onResize)
       unsubThinking()
       unsubError()
       panel.remove()
