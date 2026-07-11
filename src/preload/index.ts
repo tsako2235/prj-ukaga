@@ -3,6 +3,7 @@ import {
   IpcChannels,
   type ChatSendPayload,
   type HealthCheckResult,
+  type MascotEnsureWindowSizePayload,
   type MascotReloadCharacterPayload,
   type MascotSetIgnoreMouseEventsPayload,
   type MascotSetPositionPayload,
@@ -38,6 +39,9 @@ const api: UkagaApi = {
   },
   setIgnoreMouseEvents: (payload: MascotSetIgnoreMouseEventsPayload) => {
     ipcRenderer.send(IpcChannels.mascotSetIgnoreMouseEvents, payload)
+  },
+  ensureWindowSize: (payload: MascotEnsureWindowSizePayload) => {
+    ipcRenderer.send(IpcChannels.mascotEnsureWindowSize, payload)
   },
   sendChat: (payload: ChatSendPayload) => {
     ipcRenderer.send(IpcChannels.chatSend, payload)

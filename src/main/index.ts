@@ -26,6 +26,7 @@ import { createVoiceEngine } from './voice/factory'
 import { IpcChannels } from '../shared/ipc'
 import type {
   ChatSendPayload,
+  MascotEnsureWindowSizePayload,
   MascotSetIgnoreMouseEventsPayload,
   MascotSetPositionPayload,
   OpenExternalPayload,
@@ -35,7 +36,11 @@ import type {
 } from '../shared/ipc'
 import type { AppSettings } from '../shared/settings'
 import { createAdminWindow, getAdminWindow } from './windows/adminWindow'
-import { createMascotWindow } from './windows/mascotWindow'
+import {
+  applyMascotWindowSize,
+  createMascotWindow,
+  growMascotWindowToFit,
+} from './windows/mascotWindow'
 import { createSetupWindow } from './windows/setupWindow'
 
 let mascotWindow: BrowserWindow | null = null
@@ -90,6 +95,23 @@ function registerIpcHandlers(): void {
     (_event, payload: MascotSetPositionPayload) => {
       if (!mascotWindow || mascotWindow.isDestroyed()) return
       mascotWindow.setPosition(Math.round(payload.x), Math.round(payload.y))
+    },
+  )
+
+  // キャラが収まらないときにレンダラから要求される（拡大のみ・縮小しない）
+  ipcMain.on(
+    IpcChannels.mascotEnsureWindowSize,
+    (_event, payload: MascotEnsureWindowSizePayload) => {
+      if (!mascotWindow || mascotWindow.isDestroyed()) return
+      const applied = growMascotWindowToFit(
+        mascotWindow,
+        payload.width,
+        payload.height,
+      )
+      if (!applied) return
+      // 再起動後も維持されるよう設定にも反映
+      const next = setSettings({ window: applied })
+      broadcastSettings(next)
     },
   )
 
@@ -153,6 +175,17 @@ function registerIpcHandlers(): void {
       applyBehaviorSettings(next)
       broadcastSettings(next)
       randomTalk?.reschedule()
+
+      const windowSizeChanged =
+        prev.window.width !== next.window.width ||
+        prev.window.height !== next.window.height
+      if (windowSizeChanged && mascotWindow && !mascotWindow.isDestroyed()) {
+        applyMascotWindowSize(
+          mascotWindow,
+          next.window.width,
+          next.window.height,
+        )
+      }
 
       const modelChanged =
         prev.character.modelPath !== next.character.modelPath ||

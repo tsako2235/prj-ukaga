@@ -110,6 +110,9 @@ export function CharacterTab({ settings, patchSettings, notifySaved }: Props) {
             void patchSettings({ character: { scale: Number(e.target.value) } })
           }
         />
+        <span className="field-hint">
+          拡大してウィンドウに収まらない場合は、ウィンドウが自動で広がります
+        </span>
       </label>
 
       <label className="field">

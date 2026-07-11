@@ -107,6 +107,16 @@ async function main(): Promise<void> {
     settings.character.scale,
   )
 
+  /** キャラがウィンドウからはみ出すならウィンドウを広げる（縮小はしない） */
+  function ensureWindowFitsModel(): void {
+    const size = stage.getModelSize()
+    window.ukaga.ensureWindowSize({
+      width: Math.ceil(size.width) + 16,
+      height: Math.ceil(size.height) + 24,
+    })
+  }
+  ensureWindowFitsModel()
+
   let volumeScale = settings.voice.volumeScale
   let balloon!: BalloonController
 
@@ -159,6 +169,7 @@ async function main(): Promise<void> {
     // スケールが変わったときだけ再レイアウト（他設定のトグルで拡大しない）
     if (next.character.scale !== prevScale) {
       stage.setUserScale(next.character.scale)
+      ensureWindowFitsModel()
     }
   })
 
@@ -172,6 +183,7 @@ async function main(): Promise<void> {
       } else if (payload.scale != null) {
         stage.setUserScale(payload.scale)
       }
+      ensureWindowFitsModel()
     } catch (error) {
       console.error('[ukaga] モデル差し替え失敗', error)
       balloon.showWarning(`モデルの読み込みに失敗しました: ${String(error)}`)

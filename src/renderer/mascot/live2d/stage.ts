@@ -14,8 +14,18 @@ export type Live2DStage = {
   model: Live2DModelType
   setUserScale: (userScale: number) => void
   replaceModel: (modelPath: string, userScale?: number) => Promise<void>
+  /** 現在のキャラ描画サイズ（scale 込み・px） */
+  getModelSize: () => { width: number; height: number }
 }
 
+/**
+ * キャラサイズの基準ボックス（既定ウィンドウの内寸）。
+ * ウィンドウの実サイズではなくこの固定値にフィットさせることで、
+ * ウィンドウを広げてもキャラは大きくならず、スケール設定だけで
+ * 画面上のサイズが決まる（08 B-007/B-008）。
+ */
+const BASE_STAGE_W = 420
+const BASE_STAGE_H = 880
 /** 吹き出しを上に置けるよう、モデル配置から除外する上部余白（px） */
 const TOP_BALLOON_ZONE_MIN = 220
 const TOP_BALLOON_ZONE_RATIO = 0.34
@@ -29,14 +39,15 @@ function layoutModel(
   model.scale.set(1)
   const baseW = Math.max(1, model.width)
   const baseH = Math.max(1, model.height)
-  // 上部にバルーン用スペースを残し、キャラは下側に収める
+  // 基準ボックスの上部にバルーン用スペースを残し、その下に収まるサイズを等倍とする
   const topZone = Math.max(
     TOP_BALLOON_ZONE_MIN,
-    Math.round(app.screen.height * TOP_BALLOON_ZONE_RATIO),
+    Math.round(BASE_STAGE_H * TOP_BALLOON_ZONE_RATIO),
   )
-  const usableH = Math.max(120, app.screen.height - topZone)
-  const fit = Math.min(app.screen.width / baseW, usableH / baseH)
+  const usableH = Math.max(120, BASE_STAGE_H - topZone)
+  const fit = Math.min(BASE_STAGE_W / baseW, usableH / baseH)
   model.scale.set(fit * 0.92 * userScale)
+  // 配置は実ウィンドウの下端中央
   model.x = app.screen.width / 2
   model.y = app.screen.height
   model.anchor.set(0.5, 1)
@@ -93,6 +104,9 @@ export async function createLive2DStage(
     setUserScale(next: number) {
       currentUserScale = next
       layoutModel(app, model, currentUserScale)
+    },
+    getModelSize() {
+      return { width: model.width, height: model.height }
     },
     async replaceModel(nextPath: string, nextUserScale = currentUserScale) {
       app.stage.removeChild(model)

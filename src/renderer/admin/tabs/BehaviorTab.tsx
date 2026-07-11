@@ -1,5 +1,9 @@
 import type { AppSettings } from '../../../shared/settings'
 import type { DeepPartial } from '../../../shared/ipc'
+import {
+  MASCOT_MIN_HEIGHT,
+  MASCOT_MIN_WIDTH,
+} from '../../../shared/windowBounds'
 
 type Props = {
   settings: AppSettings
@@ -88,6 +92,52 @@ export function BehaviorTab({ settings, patchSettings }: Props) {
         />
         <span>OS起動時に自動起動</span>
       </label>
+
+      <h2>ウィンドウ</h2>
+      <p className="tab-lead">
+        マスコットウィンドウの大きさです。広げると吹き出しを動かせる範囲が広がります（キャラの大きさは変わりません。キャラの大きさはキャラクタータブの表示スケールで調整します）。
+        画面の作業領域より大きい値は自動で切り詰められます。
+      </p>
+      <div className="row-fields">
+        <label className="field">
+          <span>ウィンドウ幅（px）</span>
+          <input
+            type="number"
+            min={MASCOT_MIN_WIDTH}
+            step={20}
+            value={settings.window.width}
+            onChange={(e) =>
+              void patchSettings({
+                window: {
+                  width: Math.max(
+                    MASCOT_MIN_WIDTH,
+                    Number(e.target.value) || MASCOT_MIN_WIDTH,
+                  ),
+                },
+              })
+            }
+          />
+        </label>
+        <label className="field">
+          <span>ウィンドウ高さ（px）</span>
+          <input
+            type="number"
+            min={MASCOT_MIN_HEIGHT}
+            step={20}
+            value={settings.window.height}
+            onChange={(e) =>
+              void patchSettings({
+                window: {
+                  height: Math.max(
+                    MASCOT_MIN_HEIGHT,
+                    Number(e.target.value) || MASCOT_MIN_HEIGHT,
+                  ),
+                },
+              })
+            }
+          />
+        </label>
+      </div>
 
       <h2>デバッグ</h2>
       <p className="tab-lead">

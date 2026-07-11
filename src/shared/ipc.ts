@@ -17,6 +17,7 @@ export const IpcChannels = {
   mascotSetPosition: 'mascot:setPosition',
   mascotSetIgnoreMouseEvents: 'mascot:setIgnoreMouseEvents',
   mascotReloadCharacter: 'mascot:reloadCharacter',
+  mascotEnsureWindowSize: 'mascot:ensureWindowSize',
   chatSend: 'chat:send',
   chatInterrupt: 'chat:interrupt',
   speechSegment: 'speech:segment',
@@ -66,6 +67,12 @@ export type MascotReloadCharacterPayload = {
   scale?: number
 }
 
+/** キャラが収まるようウィンドウの最低サイズを要求する（拡大のみ・縮小しない） */
+export type MascotEnsureWindowSizePayload = {
+  width: number
+  height: number
+}
+
 export type ChatSendPayload = {
   text: string
 }
@@ -109,6 +116,7 @@ export type VoiceTestPlayPayload = {
 export type UkagaApi = {
   setPosition: (payload: MascotSetPositionPayload) => void
   setIgnoreMouseEvents: (payload: MascotSetIgnoreMouseEventsPayload) => void
+  ensureWindowSize: (payload: MascotEnsureWindowSizePayload) => void
   sendChat: (payload: ChatSendPayload) => void
   interruptChat: () => void
   getSettings: () => Promise<AppSettings>

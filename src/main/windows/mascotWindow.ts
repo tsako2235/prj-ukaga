@@ -1,6 +1,12 @@
 import { BrowserWindow, screen } from 'electron'
 import { join } from 'path'
 import type { AppSettings } from '../../shared/settings'
+import {
+  growBoundsToFit,
+  MASCOT_MIN_HEIGHT,
+  MASCOT_MIN_WIDTH,
+  resizeBoundsAnchoredBottom,
+} from '../../shared/windowBounds'
 
 const FALLBACK_WIDTH = 420
 const FALLBACK_HEIGHT = 880
@@ -13,10 +19,15 @@ export function createMascotWindow(
 ): BrowserWindow {
   const display = screen.getPrimaryDisplay()
   const { width: screenW, height: screenH } = display.workAreaSize
-  const width = windowSettings?.width ?? FALLBACK_WIDTH
-  // 旧既定 720 のまま残っている場合は吹き出し用に少し高くする
-  const rawHeight = windowSettings?.height ?? FALLBACK_HEIGHT
-  const height = rawHeight < FALLBACK_HEIGHT ? FALLBACK_HEIGHT : rawHeight
+  // 下限と作業領域の範囲に収める（ユーザーがサイズ変更できるようになったため）
+  const width = Math.min(
+    Math.max(windowSettings?.width ?? FALLBACK_WIDTH, MASCOT_MIN_WIDTH),
+    screenW,
+  )
+  const height = Math.min(
+    Math.max(windowSettings?.height ?? FALLBACK_HEIGHT, MASCOT_MIN_HEIGHT),
+    screenH,
+  )
   const x =
     windowSettings?.x ?? Math.round(screenW - width - 40)
   const y =
@@ -78,4 +89,44 @@ export function createMascotWindow(
   )
 
   return win
+}
+
+/**
+ * マスコットウィンドウを「足元（下端中央）」を保ってリサイズする。
+ * 作業領域にクランプした適用後のサイズを返す。
+ */
+export function applyMascotWindowSize(
+  win: BrowserWindow,
+  width: number,
+  height: number,
+): { width: number; height: number } {
+  const current = win.getBounds()
+  const workArea = screen.getDisplayMatching(current).workArea
+  const next = resizeBoundsAnchoredBottom(current, width, height, workArea)
+  if (
+    next.width !== current.width ||
+    next.height !== current.height ||
+    next.x !== current.x ||
+    next.y !== current.y
+  ) {
+    win.setBounds(next)
+  }
+  return { width: next.width, height: next.height }
+}
+
+/**
+ * キャラが収まるようウィンドウを広げる（縮小はしない）。
+ * 変更があった場合のみ適用後のサイズを返す。
+ */
+export function growMascotWindowToFit(
+  win: BrowserWindow,
+  minWidth: number,
+  minHeight: number,
+): { width: number; height: number } | null {
+  const current = win.getBounds()
+  const workArea = screen.getDisplayMatching(current).workArea
+  const next = growBoundsToFit(current, minWidth, minHeight, workArea)
+  if (next === current) return null
+  win.setBounds(next)
+  return { width: next.width, height: next.height }
 }
