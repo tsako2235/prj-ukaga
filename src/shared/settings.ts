@@ -1,5 +1,7 @@
 /** アプリ設定スキーマ（electron-store） */
 
+import { LLM_PROVIDER_DEFAULT_URLS } from './defaults'
+
 export type LlmProviderKind = 'ollama' | 'openai-compat'
 export type VoiceEngineKind = 'voicevox' | 'aivisspeech' | 'coeiroink' | 'custom'
 
@@ -54,7 +56,8 @@ export interface AppSettings {
 export const DEFAULT_SETTINGS: AppSettings = {
   llm: {
     provider: 'ollama',
-    baseUrl: 'http://localhost:11434/v1',
+    // プロバイダ実装が /api/... や /v1/... を付与するため、baseUrl にパスは含めない
+    baseUrl: LLM_PROVIDER_DEFAULT_URLS.ollama,
     model: 'gemma4:e4b',
     temperature: 0.7,
     contextLimit: 8,

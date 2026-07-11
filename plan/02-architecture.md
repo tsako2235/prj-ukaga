@@ -126,11 +126,20 @@ interface AppSettings {
     randomTalkIntervalMinSec: number;  // 例: 180
     randomTalkIntervalMaxSec: number;  // 例: 600
     alwaysOnTop: boolean;
+    openAtLogin: boolean;
+  };
+  debug: {
+    enabled: boolean;           // ON時はバルーンに感情タグを表示(08 B-003)
+  };
+  balloon: {
+    x: number; y: number;       // マスコットウィンドウ内の吹き出し位置px(08 B-006)
   };
   window: {
     x?: number; y?: number; width: number; height: number;
   };
 }
 ```
+
+注意: `llm.baseUrl` / `voice.baseUrl` にはパス(`/v1` 等)を含めない。プロバイダ/エンジン実装側が `/api/...` `/v1/...` を付与する。
 
 会話履歴は当面メモリ保持のみ(アプリ再起動でリセット)。永続化はフェーズ6以降の検討事項。
