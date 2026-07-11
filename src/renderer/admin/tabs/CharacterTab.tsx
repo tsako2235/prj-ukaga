@@ -5,11 +5,12 @@ import type { DeepPartial } from '../../../shared/ipc'
 type Props = {
   settings: AppSettings
   patchSettings: (patch: DeepPartial<AppSettings>) => Promise<AppSettings>
+  notifySaved?: () => void
 }
 
 const EMOTION_KEYS = ['neutral', 'happy', 'sad', 'angry', 'surprised'] as const
 
-export function CharacterTab({ settings, patchSettings }: Props) {
+export function CharacterTab({ settings, patchSettings, notifySaved }: Props) {
   const character = settings.character
   const [persona, setPersona] = useState('')
   const [status, setStatus] = useState<string | null>(null)
@@ -22,18 +23,21 @@ export function CharacterTab({ settings, patchSettings }: Props) {
   async function savePersona(content: string) {
     setPersona(content)
     await window.ukaga.setPersona({ content })
+    notifySaved?.()
   }
 
   async function resetPersona() {
     const content = await window.ukaga.resetPersona()
     setPersona(content)
     setStatus('人格プロンプトをデフォルトに戻しました')
+    notifySaved?.()
   }
 
   async function pickModel() {
     const path = await window.ukaga.pickCharacterModel()
     if (path) {
       setStatus(`モデルを変更しました: ${path}`)
+      notifySaved?.()
     }
   }
 

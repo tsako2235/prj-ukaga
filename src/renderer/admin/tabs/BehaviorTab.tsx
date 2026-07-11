@@ -88,6 +88,21 @@ export function BehaviorTab({ settings, patchSettings }: Props) {
         />
         <span>OS起動時に自動起動</span>
       </label>
+
+      <h2>デバッグ</h2>
+      <p className="tab-lead">
+        動確用です。ON にすると吹き出しに感情タグ（例: [happy]）も表示します。
+      </p>
+      <label className="field checkbox">
+        <input
+          type="checkbox"
+          checked={settings.debug?.enabled ?? false}
+          onChange={(e) =>
+            void patchSettings({ debug: { enabled: e.target.checked } })
+          }
+        />
+        <span>デバッグモード（バルーンに感情タグを表示）</span>
+      </label>
     </section>
   )
 }

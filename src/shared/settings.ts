@@ -34,6 +34,10 @@ export interface AppSettings {
     alwaysOnTop: boolean
     openAtLogin: boolean
   }
+  debug: {
+    /** ON のときバルーンに感情タグ（[happy] 等）を表示する */
+    enabled: boolean
+  }
   window: {
     x?: number
     y?: number
@@ -77,6 +81,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
     randomTalkIntervalMaxSec: 600,
     alwaysOnTop: true,
     openAtLogin: false,
+  },
+  debug: {
+    enabled: false,
   },
   window: {
     width: 420,

@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AppSettings } from '../../shared/settings'
+import type { DeepPartial } from '../../shared/ipc'
 import { BehaviorTab } from './tabs/BehaviorTab'
 import { CharacterTab } from './tabs/CharacterTab'
 import { LlmTab } from './tabs/LlmTab'
@@ -14,10 +15,23 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'behavior', label: '挙動' },
 ]
 
+const SAVED_TOAST_MS = 1800
+
 export function App() {
   const [tab, setTab] = useState<TabId>('llm')
   const [settings, setSettingsState] = useState<AppSettings | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [savedVisible, setSavedVisible] = useState(false)
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const notifySaved = useCallback(() => {
+    setSavedVisible(true)
+    if (savedTimer.current) clearTimeout(savedTimer.current)
+    savedTimer.current = setTimeout(() => {
+      setSavedVisible(false)
+      savedTimer.current = null
+    }, SAVED_TOAST_MS)
+  }, [])
 
   useEffect(() => {
     void window.ukaga
@@ -30,13 +44,20 @@ export function App() {
     })
   }, [])
 
+  useEffect(() => {
+    return () => {
+      if (savedTimer.current) clearTimeout(savedTimer.current)
+    }
+  }, [])
+
   const patchSettings = useCallback(
-    async (patch: Parameters<typeof window.ukaga.setSettings>[0]['patch']) => {
+    async (patch: DeepPartial<AppSettings>) => {
       const next = await window.ukaga.setSettings({ patch })
       setSettingsState(next)
+      notifySaved()
       return next
     },
-    [],
+    [notifySaved],
   )
 
   if (loadError) {
@@ -72,12 +93,25 @@ export function App() {
           <VoiceTab settings={settings} patchSettings={patchSettings} />
         )}
         {tab === 'character' && (
-          <CharacterTab settings={settings} patchSettings={patchSettings} />
+          <CharacterTab
+            settings={settings}
+            patchSettings={patchSettings}
+            notifySaved={notifySaved}
+          />
         )}
         {tab === 'behavior' && (
           <BehaviorTab settings={settings} patchSettings={patchSettings} />
         )}
       </main>
+      <div
+        className={
+          savedVisible ? 'save-toast visible' : 'save-toast'
+        }
+        role="status"
+        aria-live="polite"
+      >
+        保存済み ✓
+      </div>
     </div>
   )
 }

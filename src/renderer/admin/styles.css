@@ -172,3 +172,24 @@ button:disabled {
 .page-error {
   padding: 32px;
 }
+
+.save-toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 20;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: #2b3038;
+  color: #f5f5f5;
+  font-size: 12px;
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.save-toast.visible {
+  opacity: 1;
+  transform: translateY(0);
+}

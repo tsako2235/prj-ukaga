@@ -56,7 +56,7 @@ export function LlmTab({ settings, patchSettings }: Props) {
   return (
     <section className="tab-panel">
       <h1>LLM設定</h1>
-      <p className="tab-lead">変更は即時保存・反映されます。</p>
+      <p className="tab-lead">変更は即時保存・反映されます（右下に「保存済み ✓」）。</p>
 
       <label className="field">
         <span>プロバイダ</span>

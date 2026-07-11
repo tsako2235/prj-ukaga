@@ -17,8 +17,9 @@ function getStore(): Store<AppSettings> {
   return store
 }
 
+/** 既存ファイルに欠けるキーをデフォルトで補完して返す */
 export function getSettings(): AppSettings {
-  return getStore().store
+  return deepMerge(DEFAULT_SETTINGS, getStore().store)
 }
 
 function deepMerge<T extends object>(base: T, patch: DeepPartial<T>): T {

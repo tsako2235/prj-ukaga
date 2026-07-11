@@ -26,6 +26,9 @@ export function createBalloon(
   panel.id = 'balloon'
   panel.innerHTML = `
     <div class="balloon-body">
+      <div class="balloon-toolbar">
+        <button type="button" class="balloon-close" id="balloon-close" aria-label="閉じる" title="閉じる">×</button>
+      </div>
       <div class="balloon-status" id="balloon-status" hidden></div>
       <div class="balloon-error" id="balloon-error" hidden></div>
       <div class="balloon-warning" id="balloon-warning" hidden></div>
@@ -49,6 +52,7 @@ export function createBalloon(
   const warningEl = panel.querySelector('#balloon-warning') as HTMLElement
   const form = panel.querySelector('#balloon-form') as HTMLFormElement
   const input = panel.querySelector('#balloon-input') as HTMLInputElement
+  const closeBtn = panel.querySelector('#balloon-close') as HTMLButtonElement
 
   let fadeTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -80,6 +84,8 @@ export function createBalloon(
     if (fadeTimer) clearTimeout(fadeTimer)
     fadeTimer = null
     setVisible(false)
+    // 閉じた直後は下のアプリへクリックを通す（次の mousemove でヒット再判定）
+    window.ukaga.setIgnoreMouseEvents({ ignore: true, forward: true })
   }
 
   function trimMessages(): void {
@@ -119,10 +125,19 @@ export function createBalloon(
     window.ukaga.setIgnoreMouseEvents({ ignore: false })
   })
 
+  closeBtn.addEventListener('click', (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+    hide()
+  })
+
+  // 入力欄フォーカス中の Escape で閉じる（ウィンドウにキーボードフォーカスがあるときのみ届く）
   window.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && panel.classList.contains('visible')) {
-      hide()
-    }
+    if (event.key !== 'Escape') return
+    if (!panel.classList.contains('visible')) return
+    if (document.activeElement !== input) return
+    event.preventDefault()
+    hide()
   })
 
   const unsubThinking = window.ukaga.onThinking(({ thinking }) => {

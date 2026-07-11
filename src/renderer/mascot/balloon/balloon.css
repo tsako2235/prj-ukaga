@@ -18,12 +18,37 @@
 }
 
 .balloon-body {
+  position: relative;
   background: rgba(255, 252, 247, 0.94);
   border: 1px solid rgba(40, 40, 40, 0.12);
   border-radius: 14px;
   padding: 10px 12px 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   color: #222;
+}
+
+.balloon-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: -2px -2px 4px 0;
+}
+
+.balloon-close {
+  border: none;
+  background: transparent;
+  color: #888;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.balloon-close:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #333;
 }
 
 .balloon-status {

@@ -100,7 +100,12 @@ async function main(): Promise<void> {
     getVolumeScale: () => volumeScale,
     onSegmentStart: (segment) => {
       applyEmotion(stage.model, segment.emotion, emotionMap)
-      balloon.appendAssistant(segment.text, segment.emotion)
+      const showTag = settings.debug?.enabled
+      const display =
+        showTag && segment.emotion
+          ? `[${segment.emotion}]${segment.text}`
+          : segment.text
+      balloon.appendAssistant(display, segment.emotion)
     },
   })
 
