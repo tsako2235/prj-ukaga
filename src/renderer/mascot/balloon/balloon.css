@@ -1,0 +1,101 @@
+#balloon {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 12px;
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-6px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+}
+
+#balloon.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.balloon-body {
+  background: rgba(255, 252, 247, 0.94);
+  border: 1px solid rgba(40, 40, 40, 0.12);
+  border-radius: 14px;
+  padding: 10px 12px 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  color: #222;
+}
+
+.balloon-status {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+.balloon-error {
+  font-size: 12px;
+  color: #a33;
+  background: rgba(200, 60, 60, 0.08);
+  border-radius: 8px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  white-space: pre-wrap;
+}
+
+.balloon-messages {
+  max-height: 140px;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.balloon-line {
+  margin: 0 0 6px;
+}
+
+.balloon-user {
+  color: #555;
+}
+
+.balloon-user::before {
+  content: 'あなた: ';
+  color: #888;
+}
+
+.balloon-assistant {
+  color: #1a1a1a;
+}
+
+.balloon-form {
+  display: flex;
+  gap: 6px;
+}
+
+#balloon-input {
+  flex: 1;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 13px;
+  outline: none;
+  background: #fff;
+}
+
+#balloon-input:focus {
+  border-color: rgba(70, 130, 200, 0.7);
+}
+
+#balloon-send {
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  background: #3d7ab5;
+  color: #fff;
+  cursor: pointer;
+}
+
+#balloon-send:hover {
+  background: #326897;
+}

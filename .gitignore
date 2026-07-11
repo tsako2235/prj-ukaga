@@ -269,3 +269,12 @@ sessions/
 # Custom
 # =============================================================================
 .ReadMe_local.md
+
+# Live2D Cubism Core（公式配布・再配布条件あり。リポジトリには置かない）
+resources/live2dcubismcore.min.js
+resources/live2dcubismcore.js
+
+# Live2D モデル一式（ライセンス都合でコミットしない。README 参照）
+resources/models/**
+!resources/models/README.md
+!resources/models/model-path.txt.example

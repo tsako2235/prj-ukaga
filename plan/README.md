@@ -6,6 +6,7 @@
 
 | ファイル | 内容 |
 |---|---|
+| [00-implementer-instructions.md](00-implementer-instructions.md) | 実装担当モデルへの指示書(作業ルール・完了報告フォーマット) |
 | [01-overview.md](01-overview.md) | プロジェクト概要・技術選定・ライセンス注意点 |
 | [02-architecture.md](02-architecture.md) | プロセス構成・IPC・ディレクトリ構造 |
 | [03-mascot-live2d.md](03-mascot-live2d.md) | 透過ウィンドウ・Live2D表示・リップシンク・モーション |

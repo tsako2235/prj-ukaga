@@ -1,0 +1,3 @@
+# 使用する model3.json のパスを 1 行で書く（publicDir 基準の URL）
+# 例:
+# /models/Hiyori/Hiyori.model3.json
