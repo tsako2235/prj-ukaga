@@ -1,5 +1,11 @@
 const FADE_MS = 10_000
-const MAX_LINES = 40
+const MAX_LOG = 80
+
+type LogLine = {
+  role: 'user' | 'assistant'
+  text: string
+  emotion?: string
+}
 
 export type BalloonController = {
   containsPoint: (clientX: number, clientY: number) => boolean
@@ -17,6 +23,7 @@ export type BalloonOptions = {
 
 /**
  * 吹き出し UI（発話・入力・思考中・エラー）
+ * 通常は直近ターンのみ表示。過去ログは「履歴」で展開。
  */
 export function createBalloon(
   root: HTMLElement,
@@ -27,6 +34,9 @@ export function createBalloon(
   panel.innerHTML = `
     <div class="balloon-body">
       <div class="balloon-toolbar">
+        <button type="button" class="balloon-history" id="balloon-history" disabled>
+          履歴
+        </button>
         <button type="button" class="balloon-close" id="balloon-close" aria-label="閉じる" title="閉じる">×</button>
       </div>
       <div class="balloon-status" id="balloon-status" hidden></div>
@@ -53,7 +63,13 @@ export function createBalloon(
   const form = panel.querySelector('#balloon-form') as HTMLFormElement
   const input = panel.querySelector('#balloon-input') as HTMLInputElement
   const closeBtn = panel.querySelector('#balloon-close') as HTMLButtonElement
+  const historyBtn = panel.querySelector('#balloon-history') as HTMLButtonElement
 
+  /** セッション内の全ログ（LLM 履歴とは別） */
+  const log: LogLine[] = []
+  /** 通常表示用の直近ターン */
+  let currentTurn: LogLine[] = []
+  let historyOpen = false
   let fadeTimer: ReturnType<typeof setTimeout> | null = null
 
   function setVisible(next: boolean): void {
@@ -71,7 +87,16 @@ export function createBalloon(
         bumpFade()
         return
       }
+      // 履歴を開いている間は自動フェードしない
+      if (historyOpen) {
+        bumpFade()
+        return
+      }
       setVisible(false)
+      // フェード後は通常表示を空に（ログは残す）
+      currentTurn = []
+      historyOpen = false
+      renderMessages()
     }, FADE_MS)
   }
 
@@ -83,29 +108,68 @@ export function createBalloon(
   function hide(): void {
     if (fadeTimer) clearTimeout(fadeTimer)
     fadeTimer = null
+    historyOpen = false
+    currentTurn = []
+    renderMessages()
     setVisible(false)
     // 閉じた直後は下のアプリへクリックを通す（次の mousemove でヒット再判定）
     window.ukaga.setIgnoreMouseEvents({ ignore: true, forward: true })
   }
 
-  function trimMessages(): void {
-    while (messagesEl.children.length > MAX_LINES) {
-      messagesEl.firstElementChild?.remove()
+  function trimLog(): void {
+    while (log.length > MAX_LOG) {
+      log.shift()
     }
   }
 
-  function appendMessage(
-    role: 'user' | 'assistant',
-    text: string,
-    emotion?: string,
-  ): void {
+  function createRow(line: LogLine): HTMLElement {
     const row = document.createElement('div')
-    row.className = `balloon-line balloon-${role}`
-    if (emotion) row.dataset.emotion = emotion
-    row.textContent = text
-    messagesEl.appendChild(row)
-    trimMessages()
+    row.className = `balloon-line balloon-${line.role}`
+    if (line.emotion) row.dataset.emotion = line.emotion
+    row.textContent = line.text
+    return row
+  }
+
+  function renderMessages(): void {
+    messagesEl.replaceChildren()
+    const lines = historyOpen ? log : currentTurn
+    for (const line of lines) {
+      messagesEl.appendChild(createRow(line))
+    }
+    messagesEl.classList.toggle('history-mode', historyOpen)
     messagesEl.scrollTop = messagesEl.scrollHeight
+
+    historyBtn.disabled = log.length === 0
+    historyBtn.textContent = historyOpen ? '戻す' : '履歴'
+    historyBtn.title = historyOpen
+      ? '直近の発話だけ表示'
+      : log.length > 0
+        ? 'これまでの会話を表示'
+        : 'まだ履歴がありません'
+    historyBtn.setAttribute('aria-pressed', historyOpen ? 'true' : 'false')
+  }
+
+  function pushLog(line: LogLine): void {
+    log.push(line)
+    trimLog()
+  }
+
+  function startUserTurn(text: string): void {
+    historyOpen = false
+    const line: LogLine = { role: 'user', text }
+    pushLog(line)
+    currentTurn = [line]
+    renderMessages()
+  }
+
+  function appendAssistantLine(text: string, emotion?: string): void {
+    const line: LogLine = { role: 'assistant', text, emotion }
+    pushLog(line)
+    if (historyOpen) {
+      historyOpen = false
+    }
+    currentTurn.push(line)
+    renderMessages()
   }
 
   form.addEventListener('submit', (event) => {
@@ -114,7 +178,7 @@ export function createBalloon(
     if (!text) return
     input.value = ''
     options.onBeforeSend?.()
-    appendMessage('user', text)
+    startUserTurn(text)
     bumpFade()
     window.ukaga.sendChat({ text })
   })
@@ -131,6 +195,15 @@ export function createBalloon(
     hide()
   })
 
+  historyBtn.addEventListener('click', (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+    if (log.length === 0) return
+    historyOpen = !historyOpen
+    renderMessages()
+    bumpFade()
+  })
+
   // 入力欄フォーカス中の Escape で閉じる（ウィンドウにキーボードフォーカスがあるときのみ届く）
   window.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return
@@ -143,7 +216,16 @@ export function createBalloon(
   const unsubThinking = window.ukaga.onThinking(({ thinking }) => {
     statusEl.hidden = !thinking
     statusEl.textContent = thinking ? '考え中…' : ''
-    if (thinking) bumpFade()
+    if (thinking) {
+      // タップ／ランダムトーク等、入力欄以外からの発話開始時は表示を切り替える
+      const last = currentTurn[currentTurn.length - 1]
+      if (!last || last.role === 'assistant') {
+        historyOpen = false
+        currentTurn = []
+        renderMessages()
+      }
+      bumpFade()
+    }
   })
 
   const unsubError = window.ukaga.onError(({ message }) => {
@@ -166,6 +248,7 @@ export function createBalloon(
 
   // 起動時は閉じた状態（発話・クリックで開く）
   setVisible(false)
+  renderMessages()
 
   return {
     containsPoint(clientX: number, clientY: number): boolean {
@@ -181,7 +264,7 @@ export function createBalloon(
     show,
     hide,
     appendAssistant(text: string, emotion?: string): void {
-      appendMessage('assistant', text, emotion)
+      appendAssistantLine(text, emotion)
       bumpFade()
     },
     showWarning(message: string | null): void {

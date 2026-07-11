@@ -30,7 +30,37 @@
 .balloon-toolbar {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
   margin: -2px -2px 4px 0;
+}
+
+.balloon-history {
+  margin-right: auto;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  color: #555;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.balloon-history:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.04);
+  color: #222;
+}
+
+.balloon-history:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.balloon-history[aria-pressed='true'] {
+  background: #e8eef5;
+  border-color: rgba(61, 122, 181, 0.45);
+  color: #2a5a86;
 }
 
 .balloon-close {
@@ -83,6 +113,14 @@
   font-size: 13px;
   line-height: 1.5;
   margin-bottom: 8px;
+}
+
+.balloon-messages.history-mode {
+  max-height: 220px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 6px 0;
+  margin-bottom: 10px;
 }
 
 .balloon-line {
