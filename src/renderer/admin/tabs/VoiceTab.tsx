@@ -1,25 +1,38 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { AppSettings, VoiceEngineKind } from '../../../shared/settings'
 import { VOICE_ENGINE_DEFAULT_URLS } from '../../../shared/defaults'
 import type { DeepPartial, SpeakerInfo } from '../../../shared/ipc'
 
 type Props = {
   settings: AppSettings
-  patchSettings: (patch: DeepPartial<AppSettings>) => Promise<AppSettings>
+  updateDraft: (patch: DeepPartial<AppSettings>) => void
 }
 
-export function VoiceTab({ settings, patchSettings }: Props) {
+export function VoiceTab({ settings, updateDraft }: Props) {
   const voice = settings.voice
   const [speakers, setSpeakers] = useState<SpeakerInfo[]>([])
   const [status, setStatus] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+
+  // 話者IDのローカル状態（セレクトボックスではない場合の入力用）
+  const [speakerIdStr, setSpeakerIdStr] = useState(String(voice.speakerId))
+
+  useEffect(() => {
+    setSpeakerIdStr(String(voice.speakerId))
+  }, [voice.speakerId])
+
+  const commitSpeakerId = () => {
+    const val = Number(speakerIdStr) || 0
+    setSpeakerIdStr(String(val))
+    updateDraft({ voice: { speakerId: val } })
+  }
 
   async function onEngineChange(engine: VoiceEngineKind) {
     const baseUrl =
       engine === 'custom'
         ? voice.baseUrl
         : VOICE_ENGINE_DEFAULT_URLS[engine]
-    await patchSettings({ voice: { engine, baseUrl } })
+    updateDraft({ voice: { engine, baseUrl } })
     setSpeakers([])
     setStatus(null)
   }
@@ -38,7 +51,7 @@ export function VoiceTab({ settings, patchSettings }: Props) {
       setSpeakers(list)
       setStatus(`接続成功（話者スタイル ${list.length} 件）`)
       if (list.length > 0 && !list.some((s) => s.id === voice.speakerId)) {
-        await patchSettings({ voice: { speakerId: list[0].id } })
+        updateDraft({ voice: { speakerId: list[0].id } })
       }
     } catch (error) {
       setStatus(String(error))
@@ -52,6 +65,18 @@ export function VoiceTab({ settings, patchSettings }: Props) {
     setBusy(true)
     setStatus('合成中…')
     try {
+      // 本来は保存済みの設定を使うが、テスト再生用に入力中の値を渡すか、
+      // あるいは一旦ドラフトをメインプロセス側に反映せずにテスト再生可能か？
+      // ukaga.testPlayVoice は引数を取らないため、保存済みの設定を使用する。
+      // 「保存されていないとテスト再生に反映されません」という仕様でもいいが、
+      // ユーザーの利便性のために、一時的にドラフトの内容を渡して再生できると良い。
+      // ただし ukaga.testPlayVoice は引数を受け取るようになっている：
+      // voiceTestPlay: (payload?: VoiceTestPlayPayload) => Promise<...>
+      // VoiceTestPlayPayload には text しか定義されていない（shared/ipc.ts）。
+      // メインプロセスの ipcMain.handle(IpcChannels.voiceTestPlay) でも、
+      // 設定値の getSettings().voice を直接参照して合成している。
+      // そのため、ドラフト状態では「保存ボタンを押すまでテスト再生に最新のエンジン/話者設定は反映されない」という挙動になります。
+      // これは「必ず保存ボタンを押下することで設定が適用される」という要件に沿う正しい挙動です。
       const result = await window.ukaga.testPlayVoice()
       if (!result.ok) {
         setStatus(result.detail ?? 'テスト再生に失敗しました')
@@ -90,7 +115,7 @@ export function VoiceTab({ settings, patchSettings }: Props) {
           type="checkbox"
           checked={voice.enabled}
           onChange={(e) =>
-            void patchSettings({ voice: { enabled: e.target.checked } })
+            updateDraft({ voice: { enabled: e.target.checked } })
           }
         />
         <span>音声を使う</span>
@@ -114,7 +139,7 @@ export function VoiceTab({ settings, patchSettings }: Props) {
         <input
           type="text"
           value={voice.baseUrl}
-          onChange={(e) => void patchSettings({ voice: { baseUrl: e.target.value } })}
+          onChange={(e) => updateDraft({ voice: { baseUrl: e.target.value } })}
         />
       </label>
 
@@ -124,7 +149,7 @@ export function VoiceTab({ settings, patchSettings }: Props) {
           <select
             value={voice.speakerId}
             onChange={(e) =>
-              void patchSettings({ voice: { speakerId: Number(e.target.value) } })
+              updateDraft({ voice: { speakerId: Number(e.target.value) } })
             }
           >
             {speakers.map((s) => (
@@ -136,12 +161,10 @@ export function VoiceTab({ settings, patchSettings }: Props) {
         ) : (
           <input
             type="number"
-            value={voice.speakerId}
-            onChange={(e) =>
-              void patchSettings({
-                voice: { speakerId: Number(e.target.value) || 0 },
-              })
-            }
+            value={speakerIdStr}
+            onChange={(e) => setSpeakerIdStr(e.target.value)}
+            onBlur={commitSpeakerId}
+            onKeyDown={(e) => e.key === 'Enter' && commitSpeakerId()}
           />
         )}
       </label>
@@ -155,7 +178,7 @@ export function VoiceTab({ settings, patchSettings }: Props) {
           step={0.05}
           value={voice.speedScale}
           onChange={(e) =>
-            void patchSettings({ voice: { speedScale: Number(e.target.value) } })
+            updateDraft({ voice: { speedScale: Number(e.target.value) } })
           }
         />
       </label>
@@ -169,7 +192,7 @@ export function VoiceTab({ settings, patchSettings }: Props) {
           step={0.01}
           value={voice.pitchScale}
           onChange={(e) =>
-            void patchSettings({ voice: { pitchScale: Number(e.target.value) } })
+            updateDraft({ voice: { pitchScale: Number(e.target.value) } })
           }
         />
       </label>
@@ -183,7 +206,7 @@ export function VoiceTab({ settings, patchSettings }: Props) {
           step={0.05}
           value={voice.volumeScale}
           onChange={(e) =>
-            void patchSettings({ voice: { volumeScale: Number(e.target.value) } })
+            updateDraft({ voice: { volumeScale: Number(e.target.value) } })
           }
         />
       </label>

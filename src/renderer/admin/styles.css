@@ -23,6 +23,13 @@ body,
   height: 100%;
 }
 
+.admin-content-area {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
 .admin-sidebar {
   background: #2b3038;
   color: #f5f5f5;
@@ -63,6 +70,7 @@ body,
 }
 
 .admin-main {
+  flex: 1;
   overflow: auto;
   padding: 24px 28px 40px;
 }
@@ -199,4 +207,45 @@ button:disabled {
   font-weight: 400;
   font-size: 12px;
   color: #888;
+}
+
+/* 保存用フッター */
+.admin-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 28px;
+  background: #eae6dd;
+  border-top: 1px solid #d5cfc2;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.admin-footer .dirty-indicator {
+  margin-right: auto;
+  color: #c33;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.admin-footer button {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+.admin-footer .button-cancel {
+  background: #d0c8b8;
+  color: #444;
+}
+
+.admin-footer .button-cancel:hover:not(:disabled) {
+  background: #c3bba8;
+}
+
+.admin-footer .button-save {
+  background: #3d7ab5;
+}
+
+.admin-footer .button-save:hover:not(:disabled) {
+  background: #326897;
 }

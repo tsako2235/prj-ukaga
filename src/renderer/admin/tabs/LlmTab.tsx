@@ -1,21 +1,34 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { AppSettings, LlmProviderKind } from '../../../shared/settings'
 import { LLM_PROVIDER_DEFAULT_URLS } from '../../../shared/defaults'
 import type { DeepPartial, ModelInfo } from '../../../shared/ipc'
 
 type Props = {
   settings: AppSettings
-  patchSettings: (patch: DeepPartial<AppSettings>) => Promise<AppSettings>
+  updateDraft: (patch: DeepPartial<AppSettings>) => void
 }
 
-export function LlmTab({ settings, patchSettings }: Props) {
+export function LlmTab({ settings, updateDraft }: Props) {
   const llm = settings.llm
   const [models, setModels] = useState<ModelInfo[]>([])
   const [status, setStatus] = useState<string | null>(null)
   const [testing, setTesting] = useState(false)
 
+  // 履歴送信数のローカル状態
+  const [contextLimitStr, setContextLimitStr] = useState(String(llm.contextLimit))
+
+  useEffect(() => {
+    setContextLimitStr(String(llm.contextLimit))
+  }, [llm.contextLimit])
+
+  const commitContextLimit = () => {
+    const val = Math.min(50, Math.max(1, Number(contextLimitStr) || 1))
+    setContextLimitStr(String(val))
+    updateDraft({ llm: { contextLimit: val } })
+  }
+
   async function onProviderChange(provider: LlmProviderKind) {
-    await patchSettings({
+    updateDraft({
       llm: {
         provider,
         baseUrl: LLM_PROVIDER_DEFAULT_URLS[provider],
@@ -43,7 +56,7 @@ export function LlmTab({ settings, patchSettings }: Props) {
           : '接続成功（モデルなし）',
       )
       if (list.length > 0 && !list.some((m) => m.id === llm.model)) {
-        await patchSettings({ llm: { model: list[0].id } })
+        updateDraft({ llm: { model: list[0].id } })
       }
     } catch (error) {
       setStatus(String(error))
@@ -56,7 +69,7 @@ export function LlmTab({ settings, patchSettings }: Props) {
   return (
     <section className="tab-panel">
       <h1>LLM設定</h1>
-      <p className="tab-lead">変更は即時保存・反映されます（右下に「保存済み ✓」）。</p>
+      <p className="tab-lead">設定は下部のボタンで保存されるまで適用されません。</p>
 
       <label className="field">
         <span>プロバイダ</span>
@@ -74,7 +87,7 @@ export function LlmTab({ settings, patchSettings }: Props) {
         <input
           type="text"
           value={llm.baseUrl}
-          onChange={(e) => void patchSettings({ llm: { baseUrl: e.target.value } })}
+          onChange={(e) => updateDraft({ llm: { baseUrl: e.target.value } })}
         />
       </label>
 
@@ -85,7 +98,7 @@ export function LlmTab({ settings, patchSettings }: Props) {
             type="password"
             value={llm.apiKey ?? ''}
             onChange={(e) =>
-              void patchSettings({ llm: { apiKey: e.target.value || undefined } })
+              updateDraft({ llm: { apiKey: e.target.value || undefined } })
             }
             placeholder="不要な場合は空欄"
           />
@@ -97,7 +110,7 @@ export function LlmTab({ settings, patchSettings }: Props) {
         {models.length > 0 ? (
           <select
             value={llm.model}
-            onChange={(e) => void patchSettings({ llm: { model: e.target.value } })}
+            onChange={(e) => updateDraft({ llm: { model: e.target.value } })}
           >
             {models.map((m) => (
               <option key={m.id} value={m.id}>
@@ -109,7 +122,7 @@ export function LlmTab({ settings, patchSettings }: Props) {
           <input
             type="text"
             value={llm.model}
-            onChange={(e) => void patchSettings({ llm: { model: e.target.value } })}
+            onChange={(e) => updateDraft({ llm: { model: e.target.value } })}
             placeholder="接続テストで一覧取得、または直接入力"
           />
         )}
@@ -124,7 +137,7 @@ export function LlmTab({ settings, patchSettings }: Props) {
           step={0.05}
           value={llm.temperature}
           onChange={(e) =>
-            void patchSettings({ llm: { temperature: Number(e.target.value) } })
+            updateDraft({ llm: { temperature: Number(e.target.value) } })
           }
         />
       </label>
@@ -135,12 +148,10 @@ export function LlmTab({ settings, patchSettings }: Props) {
           type="number"
           min={1}
           max={50}
-          value={llm.contextLimit}
-          onChange={(e) =>
-            void patchSettings({
-              llm: { contextLimit: Math.max(1, Number(e.target.value) || 1) },
-            })
-          }
+          value={contextLimitStr}
+          onChange={(e) => setContextLimitStr(e.target.value)}
+          onBlur={commitContextLimit}
+          onKeyDown={(e) => e.key === 'Enter' && commitContextLimit()}
         />
       </label>
 

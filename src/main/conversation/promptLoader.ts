@@ -63,6 +63,10 @@ export class PromptLoader {
     return this.persona
   }
 
+  getPersonaDefault(): string {
+    return this.personaDefault
+  }
+
   setPersona(content: string): void {
     writeFileSync(this.personaPath(), content, 'utf8')
     this.persona = content

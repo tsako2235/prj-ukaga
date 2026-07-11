@@ -1,43 +1,38 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { AppSettings } from '../../../shared/settings'
 import type { DeepPartial } from '../../../shared/ipc'
 
 type Props = {
   settings: AppSettings
-  patchSettings: (patch: DeepPartial<AppSettings>) => Promise<AppSettings>
+  updateDraft: (patch: DeepPartial<AppSettings>) => void
+  draftPersona: string
+  setDraftPersona: (content: string) => void
   notifySaved?: () => void
 }
 
 const EMOTION_KEYS = ['neutral', 'happy', 'sad', 'angry', 'surprised'] as const
 
-export function CharacterTab({ settings, patchSettings, notifySaved }: Props) {
+export function CharacterTab({ settings, updateDraft, draftPersona, setDraftPersona, notifySaved }: Props) {
   const character = settings.character
-  const [persona, setPersona] = useState('')
   const [status, setStatus] = useState<string | null>(null)
 
-  useEffect(() => {
-    void window.ukaga.getPersona().then(setPersona)
-    return window.ukaga.onPersonaChanged(setPersona)
-  }, [])
-
   async function savePersona(content: string) {
-    setPersona(content)
-    await window.ukaga.setPersona({ content })
-    notifySaved?.()
+    setDraftPersona(content)
   }
 
   async function resetPersona() {
+    // personaReset はデフォルト値を取得するクエリに修正されたため、
+    // ファイル自体は書き換えずにドラフトに設定する
     const content = await window.ukaga.resetPersona()
-    setPersona(content)
-    setStatus('人格プロンプトをデフォルトに戻しました')
-    notifySaved?.()
+    setDraftPersona(content)
+    setStatus('人格プロンプトをデフォルトにリセットしました (保存ボタンを押すと適用されます)')
   }
 
   async function pickModel() {
     const path = await window.ukaga.pickCharacterModel()
     if (path) {
-      setStatus(`モデルを変更しました: ${path}`)
-      notifySaved?.()
+      updateDraft({ character: { modelPath: path } })
+      setStatus(`モデルを選択しました: ${path} (保存ボタンを押すと適用されます)`)
     }
   }
 
@@ -50,15 +45,15 @@ export function CharacterTab({ settings, patchSettings, notifySaved }: Props) {
         return
       }
       const map = (await res.json()) as Record<string, string>
-      await patchSettings({ character: { emotionMap: map } })
-      setStatus('推奨の感情マップを適用しました')
+      updateDraft({ character: { emotionMap: map } })
+      setStatus('推奨の感情マップを選択しました (保存ボタンを押すと適用されます)')
     } catch (error) {
       setStatus(`推奨マップの読込に失敗: ${String(error)}`)
     }
   }
 
   async function updateEmotion(key: string, value: string) {
-    await patchSettings({
+    updateDraft({
       character: {
         emotionMap: {
           ...character.emotionMap,
@@ -71,7 +66,7 @@ export function CharacterTab({ settings, patchSettings, notifySaved }: Props) {
   return (
     <section className="tab-panel">
       <h1>キャラクター設定</h1>
-      <p className="tab-lead">名前・モデル・人格を編集します。</p>
+      <p className="tab-lead">設定は下部のボタンで保存されるまで適用されません。</p>
 
       <label className="field">
         <span>名前</span>
@@ -79,7 +74,7 @@ export function CharacterTab({ settings, patchSettings, notifySaved }: Props) {
           type="text"
           value={character.name}
           onChange={(e) =>
-            void patchSettings({ character: { name: e.target.value } })
+            updateDraft({ character: { name: e.target.value } })
           }
         />
       </label>
@@ -107,7 +102,7 @@ export function CharacterTab({ settings, patchSettings, notifySaved }: Props) {
           step={0.05}
           value={character.scale}
           onChange={(e) =>
-            void patchSettings({ character: { scale: Number(e.target.value) } })
+            updateDraft({ character: { scale: Number(e.target.value) } })
           }
         />
         <span className="field-hint">
@@ -119,13 +114,13 @@ export function CharacterTab({ settings, patchSettings, notifySaved }: Props) {
         <span>人格プロンプト</span>
         <textarea
           rows={8}
-          value={persona}
+          value={draftPersona}
           onChange={(e) => void savePersona(e.target.value)}
         />
       </label>
       <div className="actions">
         <button type="button" onClick={() => void resetPersona()}>
-          リセット
+          デフォルトに戻す
         </button>
       </div>
 

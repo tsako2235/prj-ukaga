@@ -208,7 +208,7 @@ function registerIpcHandlers(): void {
   )
 
   ipcMain.handle(IpcChannels.personaReset, () => {
-    return promptLoader?.resetPersona() ?? ''
+    return promptLoader?.getPersonaDefault() ?? ''
   })
 
   ipcMain.handle(IpcChannels.llmListModels, async () => {
@@ -272,9 +272,6 @@ function registerIpcHandlers(): void {
     if (!modelPath.endsWith('.model3.json')) {
       return null
     }
-    const next = setSettings({ character: { modelPath } })
-    broadcastSettings(next)
-    notifyMascotReload(next)
     return modelPath
   })
 }
