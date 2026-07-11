@@ -58,21 +58,22 @@ export const DEFAULT_SETTINGS: AppSettings = {
     enabled: true,
     engine: 'voicevox',
     baseUrl: 'http://127.0.0.1:50021',
-    speakerId: 1,
+    /** 春日部つむぎ（ノーマル） */
+    speakerId: 8,
     speedScale: 1,
     pitchScale: 0,
     volumeScale: 1,
   },
   character: {
-    name: 'うかが',
+    name: 'つむぎ',
     modelPath: '',
     scale: 1,
     emotionMap: {
       neutral: '',
-      happy: '',
-      sad: '',
-      angry: '',
-      surprised: '',
+      happy: 'kira',
+      sad: 'tear',
+      angry: 'shock',
+      surprised: 'blush',
     },
   },
   behavior: {

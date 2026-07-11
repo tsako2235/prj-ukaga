@@ -1,7 +1,10 @@
 import type { Live2DModel } from 'pixi-live2d-display'
 import type { SpeechSegmentPayload } from '../../../shared/ipc'
+import {
+  resolveMouthOpenParamId,
+  setMouthOpen,
+} from '../live2d/mouthParam'
 
-const MOUTH_PARAM = 'ParamMouthOpenY'
 const RMS_GAIN = 8
 const ATTACK = 0.45
 const RELEASE = 0.18
@@ -28,6 +31,8 @@ export function createSpeechPlayer(options: SpeechPlayerOptions) {
   let rafId = 0
   let smoothed = 0
   let generation = 0
+  let mouthParamId: string | null | undefined
+  let mouthParamModel: Live2DModel | null = null
 
   function getContext(): AudioContext {
     if (!audioContext) {
@@ -36,18 +41,22 @@ export function createSpeechPlayer(options: SpeechPlayerOptions) {
     return audioContext
   }
 
-  function setMouth(value: number): void {
-    try {
-      const coreModel = options.getModel().internalModel.coreModel as {
-        setParameterValueById: (id: string, value: number) => void
+  function mouthId(): string | null {
+    const model = options.getModel()
+    if (mouthParamId === undefined || mouthParamModel !== model) {
+      mouthParamModel = model
+      mouthParamId = resolveMouthOpenParamId(model)
+      if (mouthParamId) {
+        console.info(`[ukaga] リップシンクパラメータ: ${mouthParamId}`)
+      } else {
+        console.warn('[ukaga] 口パク用パラメータが見つかりません')
       }
-      coreModel.setParameterValueById(
-        MOUTH_PARAM,
-        Math.max(0, Math.min(1, value)),
-      )
-    } catch {
-      // パラメータが無いモデルもある
     }
+    return mouthParamId
+  }
+
+  function setMouth(value: number): void {
+    setMouthOpen(options.getModel(), mouthId(), value)
   }
 
   function stopLipSync(): void {

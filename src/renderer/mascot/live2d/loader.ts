@@ -76,6 +76,10 @@ async function urlExists(url: string): Promise<boolean> {
 
 /** resources/models 配下の .model3.json を探す（絶対 URL を返す） */
 export async function findModelPath(): Promise<string | null> {
+  // 明示マニフェストを候補より優先（差し替え用）
+  const fromManifest = await readModelPathManifest()
+  if (fromManifest) return fromManifest
+
   for (const candidate of MODEL_CANDIDATES) {
     const url = assetUrl(candidate)
     if (await urlExists(url)) {
@@ -83,22 +87,48 @@ export async function findModelPath(): Promise<string | null> {
     }
   }
 
-  // マニフェストがあればそれを使う（任意）
-  const manifestUrl = assetUrl('models/model-path.txt')
-  if (await urlExists(manifestUrl)) {
-    try {
-      const text = (await (await fetch(manifestUrl)).text()).trim()
-      if (!text) return null
-      const resolved = text.startsWith('http')
-        ? text
-        : assetUrl(text.replace(/^\//, ''))
-      if (await urlExists(resolved)) {
-        return resolved
-      }
-    } catch {
-      // 無視
-    }
-  }
-
   return null
+}
+
+async function readModelPathManifest(): Promise<string | null> {
+  const manifestUrl = assetUrl('models/model-path.txt')
+  if (!(await urlExists(manifestUrl))) return null
+  try {
+    const text = (await (await fetch(manifestUrl)).text()).trim()
+    if (!text) return null
+    const resolved = text.startsWith('http')
+      ? text
+      : assetUrl(text.replace(/^\//, ''))
+    if (await urlExists(resolved)) {
+      return resolved
+    }
+  } catch {
+    // 無視
+  }
+  return null
+}
+
+/**
+ * モデルと同じフォルダの emotion-map.recommended.json を読む（無ければ null）
+ */
+export async function fetchRecommendedEmotionMap(
+  modelUrl: string,
+): Promise<Record<string, string> | null> {
+  try {
+    const recommendedUrl = new URL(
+      'emotion-map.recommended.json',
+      modelUrl,
+    ).href
+    const res = await fetch(recommendedUrl)
+    if (!res.ok) return null
+    const data = (await res.json()) as Record<string, string>
+    if (!data || typeof data !== 'object') return null
+    return data
+  } catch {
+    return null
+  }
+}
+
+export function isEmotionMapEmpty(map: Record<string, string>): boolean {
+  return Object.values(map).every((v) => !String(v ?? '').trim())
 }

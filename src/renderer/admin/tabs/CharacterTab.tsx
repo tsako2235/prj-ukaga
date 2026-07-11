@@ -41,6 +41,22 @@ export function CharacterTab({ settings, patchSettings, notifySaved }: Props) {
     }
   }
 
+  async function applyRecommendedEmotionMap() {
+    const fetchUrl = '/models/Tsumugi/emotion-map.recommended.json'
+    try {
+      const res = await fetch(fetchUrl)
+      if (!res.ok) {
+        setStatus('推奨 emotion-map.recommended.json が見つかりません')
+        return
+      }
+      const map = (await res.json()) as Record<string, string>
+      await patchSettings({ character: { emotionMap: map } })
+      setStatus('推奨の感情マップを適用しました')
+    } catch (error) {
+      setStatus(`推奨マップの読込に失敗: ${String(error)}`)
+    }
+  }
+
   async function updateEmotion(key: string, value: string) {
     await patchSettings({
       character: {
@@ -74,7 +90,7 @@ export function CharacterTab({ settings, patchSettings, notifySaved }: Props) {
           <input
             type="text"
             readOnly
-            value={character.modelPath || '（同梱サンプルを使用）'}
+            value={character.modelPath || '（同梱サンプル / model-path.txt）'}
           />
           <button type="button" onClick={() => void pickModel()}>
             選択…
@@ -114,6 +130,11 @@ export function CharacterTab({ settings, patchSettings, notifySaved }: Props) {
       <p className="tab-lead">
         感情タグ → Live2D の表情 / モーション名（空なら変更なし）
       </p>
+      <div className="actions" style={{ marginBottom: 12 }}>
+        <button type="button" onClick={() => void applyRecommendedEmotionMap()}>
+          つむぎ推奨マップを適用
+        </button>
+      </div>
       <div className="emotion-table">
         {EMOTION_KEYS.map((key) => (
           <label key={key} className="field">

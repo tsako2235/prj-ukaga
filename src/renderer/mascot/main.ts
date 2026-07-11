@@ -8,7 +8,13 @@ import {
   playMotionSafe,
   resolveTapMotion,
 } from './live2d/emotion'
-import { findModelPath, loadCubismCore, showMessage } from './live2d/loader'
+import {
+  fetchRecommendedEmotionMap,
+  findModelPath,
+  isEmotionMapEmpty,
+  loadCubismCore,
+  showMessage,
+} from './live2d/loader'
 import { createLive2DStage } from './live2d/stage'
 import type { AppSettings } from '../../shared/settings'
 
@@ -83,6 +89,15 @@ async function main(): Promise<void> {
     )
     window.ukaga.setIgnoreMouseEvents({ ignore: false })
     return
+  }
+
+  // 未設定ならモデル同梱の推奨 emotionMap を使う（設定ファイルは書き換えない）
+  if (isEmotionMapEmpty(emotionMap)) {
+    const recommended = await fetchRecommendedEmotionMap(modelPath)
+    if (recommended) {
+      emotionMap = { ...emotionMap, ...recommended }
+      console.info('[ukaga] 推奨 emotionMap を適用しました')
+    }
   }
 
   const stage = await createLive2DStage(
