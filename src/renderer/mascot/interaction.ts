@@ -4,9 +4,8 @@ import type { Live2DModel } from 'pixi-live2d-display'
 const HIT_THROTTLE_MS = 30
 
 export type InteractionOptions = {
-  /** バルーン等、キャラ以外の操作可能 UI 上か */
+  getModel: () => Live2DModel
   isOverUi?: (clientX: number, clientY: number) => boolean
-  /** キャラクリック時（バルーン表示など） */
   onModelClick?: () => void
 }
 
@@ -15,11 +14,9 @@ export type InteractionOptions = {
  */
 export function setupInteraction(
   app: Application,
-  model: Live2DModel,
-  options: InteractionOptions = {},
+  options: InteractionOptions,
 ): void {
   let dragging = false
-  /** クリック地点のウィンドウ内オフセット */
   let dragOffsetX = 0
   let dragOffsetY = 0
   let lastHitCheck = 0
@@ -37,13 +34,14 @@ export function setupInteraction(
   }
 
   function isOverModel(clientX: number, clientY: number): boolean {
+    const model = options.getModel()
     const { x, y } = canvasPoint(clientX, clientY)
 
     try {
       const hits = model.hitTest(x, y)
       if (hits.length > 0) return true
     } catch {
-      // ヒットエリア未定義のモデル向けフォールバックへ
+      // fallback
     }
 
     const bounds = model.getBounds(true)
@@ -64,6 +62,7 @@ export function setupInteraction(
   }
 
   function onMouseMove(event: MouseEvent): void {
+    const model = options.getModel()
     const { x, y } = canvasPoint(event.clientX, event.clientY)
     model.focus(x, y)
 
@@ -109,7 +108,6 @@ export function setupInteraction(
     }
     dragging = false
     dragMoved = false
-    // mouseup 後のヒット状態を即座に反映
     const hit = isInteractive(event.clientX, event.clientY)
     interactive = hit
     setClickThrough(!hit)

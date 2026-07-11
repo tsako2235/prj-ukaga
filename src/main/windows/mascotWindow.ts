@@ -52,9 +52,9 @@ export function createMascotWindow(
   win.setIgnoreMouseEvents(true, { forward: true })
 
   if (process.env['ELECTRON_RENDERER_URL']) {
-    win.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/mascot/index.html`)
   } else {
-    win.loadFile(join(__dirname, '../renderer/index.html'))
+    win.loadFile(join(__dirname, '../renderer/mascot/index.html'))
   }
 
   win.once('ready-to-show', () => {

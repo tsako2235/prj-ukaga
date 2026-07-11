@@ -1,10 +1,32 @@
 import * as PIXI from 'pixi.js'
+import type { Live2DModel } from 'pixi-live2d-display'
 import { createSpeechPlayer } from './audio/player'
 import { createBalloon, type BalloonController } from './balloon/balloon'
 import './balloon/balloon.css'
 import { setupInteraction } from './interaction'
 import { findModelPath, loadCubismCore, showMessage } from './live2d/loader'
 import { createLive2DStage } from './live2d/stage'
+
+/** 設定の modelPath を Live2D が読める URL にする */
+function toModelUrl(modelPath: string): string {
+  if (
+    modelPath.startsWith('http://') ||
+    modelPath.startsWith('https://') ||
+    modelPath.startsWith('file://') ||
+    modelPath.startsWith('/')
+  ) {
+    // Vite public 配下の相対 URL はそのまま
+    if (modelPath.startsWith('/') && !modelPath.startsWith('/Users') && !modelPath.match(/^\/[A-Za-z]:/)) {
+      return modelPath
+    }
+    if (modelPath.startsWith('http') || modelPath.startsWith('file')) {
+      return modelPath
+    }
+  }
+  const normalized = modelPath.replace(/\\/g, '/')
+  const withSlash = normalized.startsWith('/') ? normalized : `/${normalized}`
+  return encodeURI(`file://${withSlash}`)
+}
 
 async function main(): Promise<void> {
   const appRoot = document.getElementById('app')
@@ -24,31 +46,36 @@ async function main(): Promise<void> {
   }
 
   const { Live2DModel } = await import('pixi-live2d-display/cubism4')
+  Live2DModel.registerTicker(PIXI.Ticker)
 
-  const modelPath = await findModelPath()
+  const settings = await window.ukaga.getSettings()
+  let modelPath =
+    (settings.character.modelPath &&
+      toModelUrl(settings.character.modelPath)) ||
+    (await findModelPath())
+
   if (!modelPath) {
     showMessage(
       'Live2D モデルが見つかりません。\n\n' +
-        'README の手順に従い、サンプルモデル（.model3.json 一式）を\n' +
-        'resources/models/ 配下に配置してから再起動してください。',
+        'README の手順に従い、サンプルモデルを配置するか、\n' +
+        '管理画面から .model3.json を指定してください。',
     )
     window.ukaga.setIgnoreMouseEvents({ ignore: false })
     return
   }
 
-  Live2DModel.registerTicker(PIXI.Ticker)
+  const stage = await createLive2DStage(
+    appRoot,
+    modelPath,
+    Live2DModel,
+    settings.character.scale,
+  )
 
-  const { app, model } = await createLive2DStage(appRoot, modelPath, Live2DModel)
-
-  let volumeScale = 1
-  void window.ukaga.getSettings().then((settings) => {
-    volumeScale = settings.voice.volumeScale
-  })
-
+  let volumeScale = settings.voice.volumeScale
   let balloon!: BalloonController
 
   const player = createSpeechPlayer({
-    model,
+    getModel: () => stage.model,
     getVolumeScale: () => volumeScale,
     onSegmentStart: (segment) => {
       balloon.appendAssistant(segment.text, segment.emotion)
@@ -62,24 +89,44 @@ async function main(): Promise<void> {
     },
   })
 
-  const unsubSegment = window.ukaga.onSpeechSegment((payload) => {
+  window.ukaga.onSpeechSegment((payload) => {
     player.enqueue(payload)
   })
 
-  const unsubEnd = window.ukaga.onSpeechEnd(() => {
+  window.ukaga.onSpeechEnd(() => {
     balloon.bumpFade()
   })
 
-  setupInteraction(app, model, {
+  window.ukaga.onSettingsChanged((next) => {
+    volumeScale = next.voice.volumeScale
+    stage.setUserScale(next.character.scale)
+  })
+
+  window.ukaga.onReloadCharacter(async (payload) => {
+    try {
+      if (payload.modelPath) {
+        await stage.replaceModel(
+          toModelUrl(payload.modelPath),
+          payload.scale ?? settings.character.scale,
+        )
+      } else if (payload.scale != null) {
+        stage.setUserScale(payload.scale)
+      }
+    } catch (error) {
+      console.error('[ukaga] モデル差し替え失敗', error)
+      balloon.showWarning(`モデルの読み込みに失敗しました: ${String(error)}`)
+    }
+  })
+
+  setupInteraction(stage.app, {
+    getModel: () => stage.model,
     isOverUi: (x, y) => balloon.containsPoint(x, y),
     onModelClick: () => balloon.show(),
   })
 
-  window.addEventListener('beforeunload', () => {
-    unsubSegment()
-    unsubEnd()
-    player.dispose()
-    balloon.dispose()
+  window.addEventListener('contextmenu', (event) => {
+    event.preventDefault()
+    window.ukaga.openAdmin()
   })
 }
 

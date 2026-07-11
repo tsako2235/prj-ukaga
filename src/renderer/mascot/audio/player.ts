@@ -11,7 +11,7 @@ const MIN_TEXT_MS = 800
 const MAX_TEXT_MS = 6000
 
 export type SpeechPlayerOptions = {
-  model: Live2DModel
+  getModel: () => Live2DModel
   getVolumeScale: () => number
   onSegmentStart: (segment: SpeechSegmentPayload) => void
   onQueueEmpty?: () => void
@@ -38,7 +38,7 @@ export function createSpeechPlayer(options: SpeechPlayerOptions) {
 
   function setMouth(value: number): void {
     try {
-      const coreModel = options.model.internalModel.coreModel as {
+      const coreModel = options.getModel().internalModel.coreModel as {
         setParameterValueById: (id: string, value: number) => void
       }
       coreModel.setParameterValueById(

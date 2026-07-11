@@ -12,6 +12,23 @@ type Live2DModelConstructor = {
 export type Live2DStage = {
   app: PIXI.Application
   model: Live2DModelType
+  setUserScale: (userScale: number) => void
+  replaceModel: (modelPath: string, userScale?: number) => Promise<void>
+}
+
+function layoutModel(
+  app: PIXI.Application,
+  model: Live2DModelType,
+  userScale: number,
+): void {
+  const fit = Math.min(
+    app.screen.width / model.width,
+    app.screen.height / model.height,
+  )
+  model.scale.set(fit * 0.9 * userScale)
+  model.x = app.screen.width / 2
+  model.y = app.screen.height
+  model.anchor.set(0.5, 1)
 }
 
 /**
@@ -21,6 +38,7 @@ export async function createLive2DStage(
   container: HTMLElement,
   modelPath: string,
   Live2DModel: Live2DModelConstructor,
+  userScale = 1,
 ): Promise<Live2DStage> {
   const app = new PIXI.Application({
     backgroundAlpha: 0,
@@ -32,42 +50,55 @@ export async function createLive2DStage(
 
   container.appendChild(app.view as HTMLCanvasElement)
 
-  const model = await Live2DModel.from(modelPath, {
-    // 視線・ヒットは自前実装するため自動操作はオフ
+  let model = await Live2DModel.from(modelPath, {
     autoHitTest: false,
     autoFocus: false,
   })
+  let currentUserScale = userScale
 
-  // ウィンドウに収まるようスケール調整
-  const scaleX = app.screen.width / model.width
-  const scaleY = app.screen.height / model.height
-  const scale = Math.min(scaleX, scaleY) * 0.9
-  model.scale.set(scale)
-  model.x = app.screen.width / 2
-  model.y = app.screen.height
-  model.anchor.set(0.5, 1)
-
+  layoutModel(app, model, currentUserScale)
   app.stage.addChild(model)
 
   console.info(
     `[ukaga] Live2D モデルを読み込みました: ${modelPath} (${Math.round(model.width)}x${Math.round(model.height)})`,
   )
 
-  // Idle モーション（グループがあれば再生）
   try {
     void model.motion('Idle')
   } catch {
     // Idle グループが無いモデルもある
   }
 
-  window.addEventListener('resize', () => {
-    const nextScaleX = app.screen.width / model.width
-    const nextScaleY = app.screen.height / model.height
-    const nextScale = Math.min(nextScaleX, nextScaleY) * 0.9
-    model.scale.set(nextScale)
-    model.x = app.screen.width / 2
-    model.y = app.screen.height
-  })
+  const onResize = () => {
+    layoutModel(app, model, currentUserScale)
+  }
+  window.addEventListener('resize', onResize)
 
-  return { app, model }
+  return {
+    app,
+    get model() {
+      return model
+    },
+    setUserScale(next: number) {
+      currentUserScale = next
+      layoutModel(app, model, currentUserScale)
+    },
+    async replaceModel(nextPath: string, nextUserScale = currentUserScale) {
+      app.stage.removeChild(model)
+      model.destroy()
+      model = await Live2DModel.from(nextPath, {
+        autoHitTest: false,
+        autoFocus: false,
+      })
+      currentUserScale = nextUserScale
+      layoutModel(app, model, currentUserScale)
+      app.stage.addChild(model)
+      console.info(`[ukaga] Live2D モデルを差し替えました: ${nextPath}`)
+      try {
+        void model.motion('Idle')
+      } catch {
+        // ignore
+      }
+    },
+  }
 }

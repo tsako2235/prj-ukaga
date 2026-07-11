@@ -32,6 +32,7 @@ export interface AppSettings {
     randomTalkIntervalMinSec: number
     randomTalkIntervalMaxSec: number
     alwaysOnTop: boolean
+    openAtLogin: boolean
   }
   window: {
     x?: number
@@ -75,6 +76,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     randomTalkIntervalMinSec: 180,
     randomTalkIntervalMaxSec: 600,
     alwaysOnTop: true,
+    openAtLogin: false,
   },
   window: {
     width: 420,
