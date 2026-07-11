@@ -37,7 +37,19 @@ export const IpcChannels = {
   voiceTestPlay: 'voice:testPlay',
   characterPickModel: 'character:pickModel',
   adminOpen: 'admin:open',
+  setupOpen: 'setup:open',
+  onboardingGet: 'onboarding:get',
+  onboardingComplete: 'onboarding:complete',
+  shellOpenExternal: 'shell:openExternal',
 } as const
+
+export type OnboardingStatePayload = {
+  completedFirstRun: boolean
+}
+
+export type OpenExternalPayload = {
+  url: string
+}
 
 export type MascotSetPositionPayload = {
   x: number
@@ -113,6 +125,10 @@ export type UkagaApi = {
   ) => Promise<HealthCheckResult & { wav?: ArrayBuffer }>
   pickCharacterModel: () => Promise<string | null>
   openAdmin: () => void
+  openSetup: () => void
+  getOnboarding: () => Promise<OnboardingStatePayload>
+  completeFirstRun: () => Promise<OnboardingStatePayload>
+  openExternal: (url: string) => Promise<void>
   onSpeechSegment: (
     handler: (payload: SpeechSegmentPayload) => void,
   ) => () => void

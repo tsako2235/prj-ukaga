@@ -18,6 +18,7 @@ export default defineConfig({
         input: {
           mascot: resolve('src/renderer/mascot/index.html'),
           admin: resolve('src/renderer/admin/index.html'),
+          setup: resolve('src/renderer/setup/index.html'),
         },
       },
     },

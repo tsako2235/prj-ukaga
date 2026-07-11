@@ -7,6 +7,7 @@ import {
   type MascotSetIgnoreMouseEventsPayload,
   type MascotSetPositionPayload,
   type ModelInfo,
+  type OnboardingStatePayload,
   type PersonaSetPayload,
   type SettingsSetPayload,
   type SpeakerInfo,
@@ -81,6 +82,19 @@ const api: UkagaApi = {
   openAdmin: () => {
     ipcRenderer.send(IpcChannels.adminOpen)
   },
+  openSetup: () => {
+    ipcRenderer.send(IpcChannels.setupOpen)
+  },
+  getOnboarding: () =>
+    ipcRenderer.invoke(
+      IpcChannels.onboardingGet,
+    ) as Promise<OnboardingStatePayload>,
+  completeFirstRun: () =>
+    ipcRenderer.invoke(
+      IpcChannels.onboardingComplete,
+    ) as Promise<OnboardingStatePayload>,
+  openExternal: (url: string) =>
+    ipcRenderer.invoke(IpcChannels.shellOpenExternal, { url }) as Promise<void>,
   onSpeechSegment: (handler) =>
     subscribe<SpeechSegmentPayload>(IpcChannels.speechSegment, handler),
   onSpeechEnd: (handler) =>

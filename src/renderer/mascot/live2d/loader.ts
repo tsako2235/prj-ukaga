@@ -1,16 +1,25 @@
 /** Cubism Core / モデルの読込とメッセージ表示 */
 
-const CUBISM_CORE_URL = '/live2dcubismcore.min.js'
+/**
+ * レンダラ直下の静的アセット URL を返す。
+ * 開発時は Vite、配布時は out/renderer 基準（mascot/ からの相対）で解決する。
+ */
+function assetUrl(pathFromRendererRoot: string): string {
+  const cleaned = pathFromRendererRoot.replace(/^\//, '')
+  return new URL(`../${cleaned}`, window.location.href).href
+}
 
-/** よくあるサンプルモデルの候補パス */
+const CUBISM_CORE_URL = assetUrl('live2dcubismcore.min.js')
+
+/** よくあるサンプルモデルの候補パス（レンダラ直下からの相対） */
 const MODEL_CANDIDATES = [
-  '/models/Hiyori/Hiyori.model3.json',
-  '/models/hiyori/hiyori_pro_t11.model3.json',
-  '/models/hiyori/Hiyori.model3.json',
-  '/models/Haru/Haru.model3.json',
-  '/models/haru/Haru.model3.json',
-  '/models/Rice/Rice.model3.json',
-  '/models/sample/sample.model3.json',
+  'models/Hiyori/Hiyori.model3.json',
+  'models/hiyori/hiyori_pro_t11.model3.json',
+  'models/hiyori/Hiyori.model3.json',
+  'models/Haru/Haru.model3.json',
+  'models/haru/Haru.model3.json',
+  'models/Rice/Rice.model3.json',
+  'models/sample/sample.model3.json',
 ]
 
 export function showMessage(text: string): void {
@@ -68,17 +77,23 @@ async function urlExists(url: string): Promise<boolean> {
 /** resources/models 配下の .model3.json を探す（絶対 URL を返す） */
 export async function findModelPath(): Promise<string | null> {
   for (const candidate of MODEL_CANDIDATES) {
-    if (await urlExists(candidate)) {
-      return new URL(candidate, window.location.origin).href
+    const url = assetUrl(candidate)
+    if (await urlExists(url)) {
+      return url
     }
   }
 
   // マニフェストがあればそれを使う（任意）
-  if (await urlExists('/models/model-path.txt')) {
+  const manifestUrl = assetUrl('models/model-path.txt')
+  if (await urlExists(manifestUrl)) {
     try {
-      const text = (await (await fetch('/models/model-path.txt')).text()).trim()
-      if (text && (await urlExists(text))) {
-        return new URL(text, window.location.origin).href
+      const text = (await (await fetch(manifestUrl)).text()).trim()
+      if (!text) return null
+      const resolved = text.startsWith('http')
+        ? text
+        : assetUrl(text.replace(/^\//, ''))
+      if (await urlExists(resolved)) {
+        return resolved
       }
     } catch {
       // 無視

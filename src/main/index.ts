@@ -5,6 +5,7 @@ import {
   ipcMain,
   Menu,
   nativeImage,
+  shell,
   Tray,
 } from 'electron'
 import { existsSync } from 'fs'
@@ -16,6 +17,10 @@ import {
 } from './conversation/promptLoader'
 import { RandomTalkScheduler } from './conversation/randomTalk'
 import { createLLMProvider } from './llm/factory'
+import {
+  isFirstRunCompleted,
+  markFirstRunCompleted,
+} from './settings/onboarding'
 import { getSettings, setSettings } from './settings/store'
 import { createVoiceEngine } from './voice/factory'
 import { IpcChannels } from '../shared/ipc'
@@ -23,6 +28,7 @@ import type {
   ChatSendPayload,
   MascotSetIgnoreMouseEventsPayload,
   MascotSetPositionPayload,
+  OpenExternalPayload,
   PersonaSetPayload,
   SettingsSetPayload,
   VoiceTestPlayPayload,
@@ -30,6 +36,7 @@ import type {
 import type { AppSettings } from '../shared/settings'
 import { createAdminWindow, getAdminWindow } from './windows/adminWindow'
 import { createMascotWindow } from './windows/mascotWindow'
+import { createSetupWindow } from './windows/setupWindow'
 
 let mascotWindow: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -111,6 +118,30 @@ function registerIpcHandlers(): void {
   ipcMain.on(IpcChannels.adminOpen, () => {
     createAdminWindow()
   })
+
+  ipcMain.on(IpcChannels.setupOpen, () => {
+    createSetupWindow()
+  })
+
+  ipcMain.handle(IpcChannels.onboardingGet, () => ({
+    completedFirstRun: isFirstRunCompleted(),
+  }))
+
+  ipcMain.handle(IpcChannels.onboardingComplete, () => {
+    markFirstRunCompleted()
+    return { completedFirstRun: true }
+  })
+
+  ipcMain.handle(
+    IpcChannels.shellOpenExternal,
+    async (_event, payload: OpenExternalPayload) => {
+      const url = payload?.url?.trim()
+      if (!url || !/^https?:\/\//i.test(url)) {
+        throw new Error('許可されていない URL です')
+      }
+      await shell.openExternal(url)
+    },
+  )
 
   ipcMain.handle(IpcChannels.settingsGet, () => getSettings())
 
@@ -239,6 +270,12 @@ function createTray(): void {
         createAdminWindow()
       },
     },
+    {
+      label: 'はじめかたを開く',
+      click: () => {
+        createSetupWindow()
+      },
+    },
     { type: 'separator' },
     {
       label: 'マスコットを表示',
@@ -301,6 +338,10 @@ app.whenReady().then(() => {
   applyBehaviorSettings(getSettings())
   mascotWindow = createMascotWindow(getSettings().window)
   createTray()
+
+  if (!isFirstRunCompleted()) {
+    createSetupWindow()
+  }
 
   app.on('activate', () => {
     if (!mascotWindow || mascotWindow.isDestroyed()) {

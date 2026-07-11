@@ -13,3 +13,15 @@
 - **問題**: `pixi-live2d-display` が `@pixi/core` と `@pixi/display` を直接 import するが、npm ではこれらが `pixi.js` 配下にネストされ Vite が解決できない。
 - **採った対応**: 計画の pixi.js v7 と同バージョンの `@pixi/core` / `@pixi/display` を直接依存として追加した（新機能ではなく解決用）。
 - **影響範囲**: レンダラのビルド解決のみ。
+
+## 2026-07-12 — 初回ガイド状態を AppSettings 外の store に分離
+
+- **問題**: フェーズ6の初回起動ガイド完了フラグが `plan/02` の `AppSettings` スキーマにない。
+- **採った対応**: `electron-store` の別ファイル（`onboarding`）に `completedFirstRun` を保持。設定スキーマは変更しない。
+- **影響範囲**: メインの起動時分岐・トレイ「はじめかた」・setup ウィンドウのみ。
+
+## 2026-07-12 — 配布時アセット URL を相対解決に変更
+
+- **問題**: マスコットが `/live2dcubismcore.min.js` 等のルート絶対パスを使うと、`file://` 配布時に解決できない。
+- **採った対応**: `mascot/` からの相対 URL（`../...`）で Cubism Core / モデルを解決する。
+- **影響範囲**: `src/renderer/mascot/live2d/loader.ts`。開発サーバーでも同等に動作。

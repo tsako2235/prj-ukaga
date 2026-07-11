@@ -58,3 +58,16 @@
   - OFF（デフォルト）は現行どおりタグ非表示
   - 管理画面から切替。即時反映でよい
   - 関連: [`04-llm-integration.md`](04-llm-integration.md) 感情タグ、[`06-admin-ui.md`](06-admin-ui.md)
+
+### B-004: 会話履歴の永続化
+
+- **日付**: 2026-07-12
+- **ステータス**: 未着手
+- **内容**: アプリ再起動後も会話履歴を引き継げるようにする
+- **現状**: 履歴はメモリ保持のみ。再起動でリセットされる（[`02-architecture.md`](02-architecture.md)「当面メモリ保持」、[`04-llm-integration.md`](04-llm-integration.md)・[`07-roadmap.md`](07-roadmap.md) フェーズ6の検討事項）
+- **想定実装**（候補）:
+  - `{userData}` 配下に JSON 等で履歴を保存し、起動時に読み込む
+  - LLM 送信は現行どおり直近 `contextLimit` 往復のみ
+  - 履歴クリア（管理画面またはトレイ）があるとよい
+  - 保存件数の上限やローテーション方針は取り込み時に決める
+  - 関連: [`02-architecture.md`](02-architecture.md)、[`04-llm-integration.md`](04-llm-integration.md)

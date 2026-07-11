@@ -156,6 +156,7 @@ jspm_packages/
 dist/
 build/
 out/
+release/
 .next/
 .nuxt/
 .output/

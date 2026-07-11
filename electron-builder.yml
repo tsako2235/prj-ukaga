@@ -1,0 +1,52 @@
+appId: app.ukaga.desktop
+productName: ukaga
+copyright: Copyright © ukaga contributors
+directories:
+  output: release
+  buildResources: build
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!tests/*'
+  - '!plan/*'
+  - '!docs/*'
+  - '!resources/models/**'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml}'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+  - '!{README.md,ReadMe_local.md,.claude/**}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json,vitest.config.ts}'
+asarUnpack:
+  - resources/**
+extraResources:
+  - from: resources/prompts
+    to: prompts
+  - from: resources/tray-icon.png
+    to: tray-icon.png
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: ${productName}-${version}-win-setup.${ext}
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  createDesktopShortcut: always
+mac:
+  target:
+    - dmg
+  category: public.app-category.entertainment
+  artifactName: ${productName}-${version}-mac.${ext}
+dmg:
+  artifactName: ${productName}-${version}-mac.${ext}
+linux:
+  target:
+    - AppImage
+  category: Utility
+  artifactName: ${productName}-${version}-linux.${ext}
+appImage:
+  artifactName: ${productName}-${version}-linux.${ext}
+npmRebuild: false

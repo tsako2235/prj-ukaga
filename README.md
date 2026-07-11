@@ -1,20 +1,29 @@
 # ukaga
 
 伺か風の Live2D デスクトップマスコットアプリです。  
-透過・最前面のウィンドウにキャラクターを常駐表示します。
+透過・最前面のウィンドウにキャラクターを常駐表示し、ローカル LLM と会話します。
 
-## 前提
+スクリーンショット例は [`docs/screenshots/`](docs/screenshots/) を参照（撮影手順あり）。
 
-- Node.js (LTS)
-- パッケージマネージャは npm
+## できること
 
-アプリ本体には次のものを**同梱しません**（各自で配置・起動してください）。
+- 透過・最前面の Live2D マスコット（ドラッグ移動・クリック透過）
+- 吹き出しでの会話（Ollama / OpenAI 互換 API）
+- VOICEVOX 互換エンジンによる音声合成とリップシンク
+- ランダムトーク・タップ反応・感情タグ連動
+- 管理画面（LLM / 音声 / キャラ / 挙動）
 
-- Live2D Cubism Core（描画に必須）
-- Live2D サンプルモデル（開発・デモ用）
-- （後続フェーズ）Ollama / VOICEVOX などの外部ソフト
+## 前提ソフトウェア（同梱しません）
 
-## セットアップ
+| 用途 | ソフト | 既定エンドポイント |
+|---|---|---|
+| LLM | [Ollama](https://ollama.com/) など | `http://127.0.0.1:11434` |
+| 音声 | [VOICEVOX](https://voicevox.hiroshiba.jp/) など | `http://127.0.0.1:50021` |
+| 描画 | Live2D Cubism Core | `resources/live2dcubismcore.min.js` |
+
+初回起動時にセットアップガイドが開きます。トレイから「はじめかたを開く」でも再表示できます。
+
+## セットアップ（開発）
 
 ### 1. 依存パッケージ
 
@@ -22,42 +31,21 @@
 npm install
 ```
 
-### 2. Live2D Cubism Core の配置
+### 2. Live2D Cubism Core
 
-1. [Live2D Cubism SDK for Web](https://www.live2d.com/download/cubism-sdk/download-web/) を公式サイトから入手する
-2. 配布物内の `live2dcubismcore.min.js`（Core）を取得する
-3. プロジェクトの次のパスに置く:
+1. [Cubism SDK for Web](https://www.live2d.com/download/cubism-sdk/download-web/) を公式から入手
+2. `live2dcubismcore.min.js` を次へ配置:
 
 ```
 resources/live2dcubismcore.min.js
 ```
 
-> Cubism Core はプロプライエタリです。再配布条件・出版許諾契約は Live2D 社の案内を確認してください。  
-> このリポジトリには Core バイナリをコミットしません。
+詳細は [LICENSES.md](LICENSES.md) を参照。
 
-### 3. サンプルモデルの配置
+### 3. サンプルモデル
 
-1. Live2D 公式の無償サンプル（例: ひより / Haru など）を入手する
-2. `.model3.json` と関連ファイル一式を `resources/models/` 配下に置く
-
-例:
-
-```
-resources/models/Hiyori/Hiyori.model3.json
-resources/models/Hiyori/...（moc3 / テクスチャ等）
-```
-
-アプリは次の候補パスを順に探します。
-
-- `/models/Hiyori/Hiyori.model3.json`
-- `/models/hiyori/hiyori_pro_t11.model3.json`
-- `/models/Haru/Haru.model3.json`
-- ほか数パターン
-
-別パスを使う場合は、`resources/models/model-path.txt` に  
-`/models/あなたのフォルダ/xxx.model3.json` のように 1 行で書いてください。
-
-> サンプルモデルの利用は「無償提供マテリアル使用許諾契約」の範囲で行ってください。
+`.model3.json` 一式を `resources/models/` 配下へ（例: `resources/models/Hiyori/`）。  
+別パスを使う場合は `resources/models/model-path.txt` に 1 行で書いてください。
 
 ### 4. 起動
 
@@ -65,48 +53,65 @@ resources/models/Hiyori/...（moc3 / テクスチャ等）
 npm run dev
 ```
 
-## 会話（フェーズ2〜3）
+Ollama / VOICEVOX を起動したうえで、バルーンから話しかけてください。
 
-1. ローカルで Ollama を起動し、モデルを用意する
+## 使い方
+
+- **トレイ**（またはキャラ右クリック）: 管理画面 / はじめかた / 表示・非表示 / 終了
+- **タップ**: 頭・体に反応（モーション＋一言）
+- **ランダムトーク**: 管理画面の挙動タブで ON
+- **バルーン**: Escape で閉じる
+
+## 配布パッケージの作成
+
+事前に `resources/live2dcubismcore.min.js`（とデモ用モデル）を配置してからビルドしてください。  
+**Cubism Core を同梱して配布する場合は Live2D の出版許諾契約を確認してください**（[LICENSES.md](LICENSES.md)）。
 
 ```bash
-ollama serve
+# 現在の OS 向け
+npm run dist
+
+# OS 別
+npm run dist:mac    # dmg
+npm run dist:win    # NSIS
+npm run dist:linux  # AppImage
+
+# インストーラなしのディレクトリ出力（動作確認用）
+npm run pack
 ```
 
-2. （音声を使う場合）VOICEVOX 等を起動する（デフォルト `http://127.0.0.1:50021`）
+成果物は `release/` に出力されます。
 
-3. アプリを起動し、バルーンの入力欄から話しかけてください
-4. Ollama / VOICEVOX 未起動時はバルーンにエラーまたは警告が表示されます（TTS 失敗時もテキスト会話は継続）
+| 成果物 | 形式 |
+|---|---|
+| Windows | NSIS インストーラ |
+| macOS | dmg |
+| Linux | AppImage |
 
-トレイ（またはキャラ右クリック）から「管理画面を開く」で LLM / 音声 / キャラ / 挙動を設定できます。変更は即時反映されます。
-
-## 使い方（フェーズ5）
-
-- キャラをクリック（タップ）するとモーション＋一言反応します（ドラッグ移動と区別）
-- 管理画面の「ランダムトーク」を ON にすると、放置中に自発発話します
-- バルーンは起動時は閉じており、発話やクリックで開きます。Escape で閉じられます
-
-## 既知の制約
-
-- **Linux**: 透過ウィンドウはコンポジタや Wayland / X11 の環境差が大きく、動作しない場合があります
-- Cubism Core またはモデル未配置のときは、ウィンドウ内に日本語の案内を表示します
-
-## ライセンス上の注意
-
-- Live2D Cubism Core / サンプルモデルは各自の責任で入手・利用規約を守ってください
-- （後続フェーズ）VOICEVOX 等の合成音声は話者ごとの規約（クレジット表記など）が異なります。アプリはローカル API を呼ぶだけであり、規約遵守はユーザー責任です
+> Linux の透過ウィンドウはコンポジタや Wayland / X11 の環境差が大きく、動作しない場合があります。
 
 ## 開発コマンド
 
 | コマンド | 内容 |
 |---|---|
 | `npm run dev` | 開発モード起動 |
-| `npm run build` | 本番ビルド |
+| `npm run build` | 本番ビルド（electron-vite） |
 | `npm run preview` | ビルド結果のプレビュー |
+| `npm run dist` / `dist:*` | electron-builder でパッケージ |
+| `npm run pack` | ディレクトリのみパッケージ |
 | `npm run test` | ユニットテスト (vitest) |
 | `npm run typecheck` | TypeScript 型チェック |
 
 > Cursor 等で `ELECTRON_RUN_AS_NODE=1` が付いている環境では Electron が壊れるため、`npm run dev` / `preview` は自動でこの変数を外します。
 
-デフォルトの LLM モデル名は `qwen3:8b` です。別モデルを使う場合は、ユーザー設定ファイル  
-`~/Library/Application Support/ukaga/settings.json` の `llm.model` を編集してください（管理画面はフェーズ4）。
+設定ファイルの例（macOS）: `~/Library/Application Support/ukaga/settings.json`
+
+## 既知の制約・検討事項
+
+- 会話履歴はメモリ保持のみ（再起動でリセット）。永続化・複数キャラプリセットは今後の検討事項です
+- Cubism Core / モデル未配置時はウィンドウ内に日本語の案内を表示します
+- VOICEVOX 等の話者規約（クレジット表記など）の遵守はユーザー責任です
+
+## ライセンス
+
+第三者コンポーネントの条件は [LICENSES.md](LICENSES.md) を参照してください。
