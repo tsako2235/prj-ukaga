@@ -4,6 +4,8 @@ import type { SpeechSegmentPayload } from '../../shared/ipc'
 import type { AppSettings } from '../../shared/settings'
 import { createLLMProvider } from '../llm/factory'
 import type { ChatMessage, LLMProvider } from '../llm/types'
+import { createVoiceEngine } from '../voice/factory'
+import type { VoiceEngine } from '../voice/types'
 import { parseEmotion } from './emotionParser'
 import type { PromptLoader } from './promptLoader'
 import { SentenceSplitter } from './sentenceSplitter'
@@ -16,13 +18,15 @@ export type OrchestratorDeps = {
 
 /**
  * 会話オーケストレータ
- * LLM ストリーム → 文分割 → 感情タグ抽出 → speech:segment 送信
- * （TTS はフェーズ3。ここではテキストのみ push）
+ * LLM ストリーム → 文分割 → 感情タグ → TTS(先読み) → speech:segment
  */
 export class ConversationOrchestrator {
   private history: ChatMessage[] = []
   private abortController: AbortController | null = null
   private busy = false
+  /** 文の emit 順序を保証するチェーン（TTS は先行開始） */
+  private emitChain: Promise<void> = Promise.resolve()
+  private ttsWarned = false
 
   constructor(private readonly deps: OrchestratorDeps) {}
 
@@ -34,18 +38,20 @@ export class ConversationOrchestrator {
     this.abortController?.abort()
     this.abortController = null
     this.busy = false
+    this.emitChain = Promise.resolve()
     this.sendThinking(false)
+    this.sendToRenderer(IpcChannels.speechEnd, undefined)
   }
 
   async sendUserMessage(text: string): Promise<void> {
     const trimmed = text.trim()
     if (!trimmed) return
 
-    // 新しい入力で進行中の生成を中断
     this.interrupt()
 
     const settings = this.deps.getSettings()
     const provider = createLLMProvider(settings.llm)
+    const voice = createVoiceEngine(settings.voice)
     const system = this.deps.promptLoader.buildSystemPrompt({
       name: settings.character.name,
     })
@@ -59,6 +65,7 @@ export class ConversationOrchestrator {
     ]
 
     this.busy = true
+    this.ttsWarned = false
     this.sendError(null)
     this.sendThinking(true)
 
@@ -66,16 +73,28 @@ export class ConversationOrchestrator {
     this.abortController = controller
     const splitter = new SentenceSplitter()
     let assistantText = ''
+    this.emitChain = Promise.resolve()
 
     try {
-      await this.streamAndEmit(provider, messages, settings, splitter, controller, (token) => {
-        assistantText += token
-      })
+      await this.streamAndEmit(
+        provider,
+        voice,
+        messages,
+        settings,
+        splitter,
+        controller,
+        (token) => {
+          assistantText += token
+        },
+      )
 
       const rest = splitter.flush()
       if (rest && !controller.signal.aborted) {
-        this.emitSegment(rest)
+        this.queueSegment(rest, settings, voice, controller)
       }
+
+      // 先読み中の TTS/emit 完了を待つ
+      await this.emitChain
 
       if (assistantText.trim() && !controller.signal.aborted) {
         this.history.push({ role: 'assistant', content: assistantText.trim() })
@@ -101,6 +120,7 @@ export class ConversationOrchestrator {
 
   private async streamAndEmit(
     provider: LLMProvider,
+    voice: VoiceEngine,
     messages: ChatMessage[],
     settings: AppSettings,
     splitter: SentenceSplitter,
@@ -116,20 +136,67 @@ export class ConversationOrchestrator {
       onToken(token)
       const sentences = splitter.push(token)
       for (const sentence of sentences) {
-        this.emitSegment(sentence)
+        this.queueSegment(sentence, settings, voice, controller)
       }
     }
   }
 
-  private emitSegment(sentence: string): void {
+  /**
+   * TTS を即座に開始しつつ、完成順を emitChain で保証する（先読み合成）
+   */
+  private queueSegment(
+    sentence: string,
+    settings: AppSettings,
+    voice: VoiceEngine,
+    controller: AbortController,
+  ): void {
     const { emotion, text } = parseEmotion(sentence)
     if (!text) return
-    const payload: SpeechSegmentPayload = { text, emotion }
-    this.sendToRenderer(IpcChannels.speechSegment, payload)
+
+    const synthPromise = this.synthesizeSafe(text, settings, voice)
+
+    this.emitChain = this.emitChain.then(async () => {
+      if (controller.signal.aborted) return
+      const { wav, warning } = await synthPromise
+      if (controller.signal.aborted) return
+      if (warning && !this.ttsWarned) {
+        this.ttsWarned = true
+        this.sendError(warning)
+      }
+      const payload: SpeechSegmentPayload = {
+        text,
+        emotion,
+        wav,
+      }
+      this.sendToRenderer(IpcChannels.speechSegment, payload)
+    })
+  }
+
+  private async synthesizeSafe(
+    text: string,
+    settings: AppSettings,
+    voice: VoiceEngine,
+  ): Promise<{ wav?: ArrayBuffer; warning?: string }> {
+    if (!settings.voice.enabled) {
+      return {}
+    }
+    try {
+      const wav = await voice.synthesize(text, {
+        speakerId: settings.voice.speakerId,
+        speedScale: settings.voice.speedScale,
+        pitchScale: settings.voice.pitchScale,
+        volumeScale: settings.voice.volumeScale,
+      })
+      return { wav }
+    } catch (error) {
+      console.warn('[orchestrator] TTS 失敗、テキストのみで継続:', error)
+      return {
+        warning: `音声合成に失敗したため、テキストのみで表示します（${settings.voice.baseUrl}）`,
+      }
+    }
   }
 
   private trimHistory(contextLimit: number): void {
-    // 往復数 = user+assistant のペア。直近 contextLimit 往復を残す
     const maxMessages = Math.max(1, contextLimit) * 2
     if (this.history.length > maxMessages) {
       this.history = this.history.slice(-maxMessages)

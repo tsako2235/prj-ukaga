@@ -1,25 +1,33 @@
-import type { SpeechSegmentPayload } from '../../../shared/ipc'
-
 const FADE_MS = 12_000
 
 export type BalloonController = {
-  /** バルーン Dom 上かどうか（クリック透過判定用） */
   containsPoint: (clientX: number, clientY: number) => boolean
-  /** バルーンを表示して入力にフォーカス */
   show: () => void
+  appendAssistant: (text: string, emotion?: string) => void
+  showWarning: (message: string | null) => void
+  bumpFade: () => void
   dispose: () => void
+}
+
+export type BalloonOptions = {
+  /** 送信直前（再生キュー掃除など） */
+  onBeforeSend?: () => void
 }
 
 /**
  * 吹き出し UI（発話・入力・思考中・エラー）
  */
-export function createBalloon(root: HTMLElement): BalloonController {
+export function createBalloon(
+  root: HTMLElement,
+  options: BalloonOptions = {},
+): BalloonController {
   const panel = document.createElement('div')
   panel.id = 'balloon'
   panel.innerHTML = `
     <div class="balloon-body">
       <div class="balloon-status" id="balloon-status" hidden></div>
       <div class="balloon-error" id="balloon-error" hidden></div>
+      <div class="balloon-warning" id="balloon-warning" hidden></div>
       <div class="balloon-messages" id="balloon-messages"></div>
       <form class="balloon-form" id="balloon-form">
         <input
@@ -37,23 +45,20 @@ export function createBalloon(root: HTMLElement): BalloonController {
   const messagesEl = panel.querySelector('#balloon-messages') as HTMLElement
   const statusEl = panel.querySelector('#balloon-status') as HTMLElement
   const errorEl = panel.querySelector('#balloon-error') as HTMLElement
+  const warningEl = panel.querySelector('#balloon-warning') as HTMLElement
   const form = panel.querySelector('#balloon-form') as HTMLFormElement
   const input = panel.querySelector('#balloon-input') as HTMLInputElement
 
   let fadeTimer: ReturnType<typeof setTimeout> | null = null
-  let visible = false
 
   function setVisible(next: boolean): void {
-    visible = next
     panel.classList.toggle('visible', next)
-    panel.classList.toggle('faded', !next)
   }
 
   function bumpFade(): void {
     if (fadeTimer) clearTimeout(fadeTimer)
     setVisible(true)
     fadeTimer = setTimeout(() => {
-      // 入力中は消さない
       if (document.activeElement === input) {
         bumpFade()
         return
@@ -66,51 +71,6 @@ export function createBalloon(root: HTMLElement): BalloonController {
     bumpFade()
     input.focus()
   }
-
-  form.addEventListener('submit', (event) => {
-    event.preventDefault()
-    const text = input.value.trim()
-    if (!text) return
-    input.value = ''
-    appendMessage('user', text)
-    bumpFade()
-    window.ukaga.sendChat({ text })
-  })
-
-  // バルーン上ではクリックを受け付ける
-  panel.addEventListener('mousedown', (event) => {
-    event.stopPropagation()
-    bumpFade()
-    window.ukaga.setIgnoreMouseEvents({ ignore: false })
-  })
-
-  const unsubSegment = window.ukaga.onSpeechSegment(
-    (payload: SpeechSegmentPayload) => {
-      appendMessage('assistant', payload.text, payload.emotion)
-      bumpFade()
-    },
-  )
-
-  const unsubEnd = window.ukaga.onSpeechEnd(() => {
-    bumpFade()
-  })
-
-  const unsubThinking = window.ukaga.onThinking(({ thinking }) => {
-    statusEl.hidden = !thinking
-    statusEl.textContent = thinking ? '考え中…' : ''
-    if (thinking) bumpFade()
-  })
-
-  const unsubError = window.ukaga.onError(({ message }) => {
-    if (!message) {
-      errorEl.hidden = true
-      errorEl.textContent = ''
-      return
-    }
-    errorEl.hidden = false
-    errorEl.textContent = message
-    bumpFade()
-  })
 
   function appendMessage(
     role: 'user' | 'assistant',
@@ -125,16 +85,53 @@ export function createBalloon(root: HTMLElement): BalloonController {
     messagesEl.scrollTop = messagesEl.scrollHeight
   }
 
-  // 初期は少し見せて入力を促す
+  form.addEventListener('submit', (event) => {
+    event.preventDefault()
+    const text = input.value.trim()
+    if (!text) return
+    input.value = ''
+    options.onBeforeSend?.()
+    appendMessage('user', text)
+    bumpFade()
+    window.ukaga.sendChat({ text })
+  })
+
+  panel.addEventListener('mousedown', (event) => {
+    event.stopPropagation()
+    bumpFade()
+    window.ukaga.setIgnoreMouseEvents({ ignore: false })
+  })
+
+  const unsubThinking = window.ukaga.onThinking(({ thinking }) => {
+    statusEl.hidden = !thinking
+    statusEl.textContent = thinking ? '考え中…' : ''
+    if (thinking) bumpFade()
+  })
+
+  const unsubError = window.ukaga.onError(({ message }) => {
+    // TTS フォールバック警告は warning 枠へ
+    if (message && message.includes('音声合成')) {
+      warningEl.hidden = false
+      warningEl.textContent = message
+      errorEl.hidden = true
+      bumpFade()
+      return
+    }
+    if (!message) {
+      errorEl.hidden = true
+      errorEl.textContent = ''
+      return
+    }
+    errorEl.hidden = false
+    errorEl.textContent = message
+    bumpFade()
+  })
+
   setVisible(true)
   bumpFade()
 
   return {
     containsPoint(clientX: number, clientY: number): boolean {
-      if (!visible && panel.classList.contains('faded')) {
-        // フェード中でもヒット領域は残すと操作しづらいので非表示時は false
-        if (!panel.classList.contains('visible')) return false
-      }
       if (!panel.classList.contains('visible')) return false
       const rect = panel.getBoundingClientRect()
       return (
@@ -145,10 +142,23 @@ export function createBalloon(root: HTMLElement): BalloonController {
       )
     },
     show,
+    appendAssistant(text: string, emotion?: string): void {
+      appendMessage('assistant', text, emotion)
+      bumpFade()
+    },
+    showWarning(message: string | null): void {
+      if (!message) {
+        warningEl.hidden = true
+        warningEl.textContent = ''
+        return
+      }
+      warningEl.hidden = false
+      warningEl.textContent = message
+      bumpFade()
+    },
+    bumpFade,
     dispose(): void {
       if (fadeTimer) clearTimeout(fadeTimer)
-      unsubSegment()
-      unsubEnd()
       unsubThinking()
       unsubError()
       panel.remove()

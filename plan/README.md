@@ -14,6 +14,7 @@
 | [05-voice-synthesis.md](05-voice-synthesis.md) | 音声エンジン抽象化(VOICEVOX互換)・再生パイプライン |
 | [06-admin-ui.md](06-admin-ui.md) | 管理画面(設定UI)の仕様 |
 | [07-roadmap.md](07-roadmap.md) | フェーズ分けと実装順序 |
+| [08-additional-requirements.md](08-additional-requirements.md) | 追加要件・バックログ（実装中に出た要望） |
 
 ## 決定事項サマリ
 

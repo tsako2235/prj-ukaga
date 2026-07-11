@@ -1,5 +1,6 @@
 import * as PIXI from 'pixi.js'
-import { createBalloon } from './balloon/balloon'
+import { createSpeechPlayer } from './audio/player'
+import { createBalloon, type BalloonController } from './balloon/balloon'
 import './balloon/balloon.css'
 import { setupInteraction } from './interaction'
 import { findModelPath, loadCubismCore, showMessage } from './live2d/loader'
@@ -38,11 +39,47 @@ async function main(): Promise<void> {
   Live2DModel.registerTicker(PIXI.Ticker)
 
   const { app, model } = await createLive2DStage(appRoot, modelPath, Live2DModel)
-  const balloon = createBalloon(appRoot)
+
+  let volumeScale = 1
+  void window.ukaga.getSettings().then((settings) => {
+    volumeScale = settings.voice.volumeScale
+  })
+
+  let balloon!: BalloonController
+
+  const player = createSpeechPlayer({
+    model,
+    getVolumeScale: () => volumeScale,
+    onSegmentStart: (segment) => {
+      balloon.appendAssistant(segment.text, segment.emotion)
+    },
+  })
+
+  balloon = createBalloon(appRoot, {
+    onBeforeSend: () => {
+      player.clear()
+      balloon.showWarning(null)
+    },
+  })
+
+  const unsubSegment = window.ukaga.onSpeechSegment((payload) => {
+    player.enqueue(payload)
+  })
+
+  const unsubEnd = window.ukaga.onSpeechEnd(() => {
+    balloon.bumpFade()
+  })
 
   setupInteraction(app, model, {
     isOverUi: (x, y) => balloon.containsPoint(x, y),
     onModelClick: () => balloon.show(),
+  })
+
+  window.addEventListener('beforeunload', () => {
+    unsubSegment()
+    unsubEnd()
+    player.dispose()
+    balloon.dispose()
   })
 }
 

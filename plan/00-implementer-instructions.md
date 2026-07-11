@@ -62,3 +62,4 @@
 | 音声エンジンIF・TTS/再生/リップシンク | `plan/05-voice-synthesis.md` |
 | 管理画面の項目仕様 | `plan/06-admin-ui.md` |
 | 実装順序・各フェーズの確認項目・リスク | `plan/07-roadmap.md` |
+| 追加要件・バックログ | `plan/08-additional-requirements.md` |
