@@ -21,10 +21,11 @@ function layoutModel(
   model: Live2DModelType,
   userScale: number,
 ): void {
-  const fit = Math.min(
-    app.screen.width / model.width,
-    app.screen.height / model.height,
-  )
+  // model.width/height は scale 込みのため、一度 1 に戻して基準サイズを測る
+  model.scale.set(1)
+  const baseW = Math.max(1, model.width)
+  const baseH = Math.max(1, model.height)
+  const fit = Math.min(app.screen.width / baseW, app.screen.height / baseH)
   model.scale.set(fit * 0.9 * userScale)
   model.x = app.screen.width / 2
   model.y = app.screen.height

@@ -2,11 +2,19 @@ import type { Application } from 'pixi.js'
 import type { Live2DModel } from 'pixi-live2d-display'
 
 const HIT_THROTTLE_MS = 30
+/** この距離未満の移動はクリック（タップ）とみなす */
+const CLICK_MOVE_PX = 6
+
+export type ModelClickInfo = {
+  clientX: number
+  clientY: number
+  hits: string[]
+}
 
 export type InteractionOptions = {
   getModel: () => Live2DModel
   isOverUi?: (clientX: number, clientY: number) => boolean
-  onModelClick?: () => void
+  onModelClick?: (info: ModelClickInfo) => void
 }
 
 /**
@@ -19,6 +27,8 @@ export function setupInteraction(
   let dragging = false
   let dragOffsetX = 0
   let dragOffsetY = 0
+  let startClientX = 0
+  let startClientY = 0
   let lastHitCheck = 0
   let interactive = false
   let dragMoved = false
@@ -33,17 +43,21 @@ export function setupInteraction(
     }
   }
 
+  function hitAreasAt(clientX: number, clientY: number): string[] {
+    const model = options.getModel()
+    const { x, y } = canvasPoint(clientX, clientY)
+    try {
+      return model.hitTest(x, y) ?? []
+    } catch {
+      return []
+    }
+  }
+
   function isOverModel(clientX: number, clientY: number): boolean {
     const model = options.getModel()
     const { x, y } = canvasPoint(clientX, clientY)
-
-    try {
-      const hits = model.hitTest(x, y)
-      if (hits.length > 0) return true
-    } catch {
-      // fallback
-    }
-
+    const hits = hitAreasAt(clientX, clientY)
+    if (hits.length > 0) return true
     const bounds = model.getBounds(true)
     return bounds.contains(x, y)
   }
@@ -67,11 +81,17 @@ export function setupInteraction(
     model.focus(x, y)
 
     if (dragging) {
-      dragMoved = true
-      window.ukaga.setPosition({
-        x: event.screenX - dragOffsetX,
-        y: event.screenY - dragOffsetY,
-      })
+      const dx = event.clientX - startClientX
+      const dy = event.clientY - startClientY
+      if (Math.hypot(dx, dy) >= CLICK_MOVE_PX) {
+        dragMoved = true
+      }
+      if (dragMoved) {
+        window.ukaga.setPosition({
+          x: event.screenX - dragOffsetX,
+          y: event.screenY - dragOffsetY,
+        })
+      }
       return
     }
 
@@ -100,11 +120,17 @@ export function setupInteraction(
     setClickThrough(false)
     dragOffsetX = event.clientX
     dragOffsetY = event.clientY
+    startClientX = event.clientX
+    startClientY = event.clientY
   }
 
   function onMouseUp(event: MouseEvent): void {
     if (dragging && !dragMoved) {
-      options.onModelClick?.()
+      options.onModelClick?.({
+        clientX: event.clientX,
+        clientY: event.clientY,
+        hits: hitAreasAt(event.clientX, event.clientY),
+      })
     }
     dragging = false
     dragMoved = false

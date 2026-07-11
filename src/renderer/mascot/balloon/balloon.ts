@@ -1,8 +1,10 @@
-const FADE_MS = 12_000
+const FADE_MS = 10_000
+const MAX_LINES = 40
 
 export type BalloonController = {
   containsPoint: (clientX: number, clientY: number) => boolean
   show: () => void
+  hide: () => void
   appendAssistant: (text: string, emotion?: string) => void
   showWarning: (message: string | null) => void
   bumpFade: () => void
@@ -10,7 +12,6 @@ export type BalloonController = {
 }
 
 export type BalloonOptions = {
-  /** 送信直前（再生キュー掃除など） */
   onBeforeSend?: () => void
 }
 
@@ -53,13 +54,16 @@ export function createBalloon(
 
   function setVisible(next: boolean): void {
     panel.classList.toggle('visible', next)
+    if (!next && document.activeElement === input) {
+      input.blur()
+    }
   }
 
   function bumpFade(): void {
     if (fadeTimer) clearTimeout(fadeTimer)
     setVisible(true)
     fadeTimer = setTimeout(() => {
-      if (document.activeElement === input) {
+      if (document.activeElement === input && input.value.trim()) {
         bumpFade()
         return
       }
@@ -72,6 +76,18 @@ export function createBalloon(
     input.focus()
   }
 
+  function hide(): void {
+    if (fadeTimer) clearTimeout(fadeTimer)
+    fadeTimer = null
+    setVisible(false)
+  }
+
+  function trimMessages(): void {
+    while (messagesEl.children.length > MAX_LINES) {
+      messagesEl.firstElementChild?.remove()
+    }
+  }
+
   function appendMessage(
     role: 'user' | 'assistant',
     text: string,
@@ -82,6 +98,7 @@ export function createBalloon(
     if (emotion) row.dataset.emotion = emotion
     row.textContent = text
     messagesEl.appendChild(row)
+    trimMessages()
     messagesEl.scrollTop = messagesEl.scrollHeight
   }
 
@@ -102,6 +119,12 @@ export function createBalloon(
     window.ukaga.setIgnoreMouseEvents({ ignore: false })
   })
 
+  window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && panel.classList.contains('visible')) {
+      hide()
+    }
+  })
+
   const unsubThinking = window.ukaga.onThinking(({ thinking }) => {
     statusEl.hidden = !thinking
     statusEl.textContent = thinking ? '考え中…' : ''
@@ -109,7 +132,6 @@ export function createBalloon(
   })
 
   const unsubError = window.ukaga.onError(({ message }) => {
-    // TTS フォールバック警告は warning 枠へ
     if (message && message.includes('音声合成')) {
       warningEl.hidden = false
       warningEl.textContent = message
@@ -127,8 +149,8 @@ export function createBalloon(
     bumpFade()
   })
 
-  setVisible(true)
-  bumpFade()
+  // 起動時は閉じた状態（発話・クリックで開く）
+  setVisible(false)
 
   return {
     containsPoint(clientX: number, clientY: number): boolean {
@@ -142,6 +164,7 @@ export function createBalloon(
       )
     },
     show,
+    hide,
     appendAssistant(text: string, emotion?: string): void {
       appendMessage('assistant', text, emotion)
       bumpFade()

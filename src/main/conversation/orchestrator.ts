@@ -10,6 +10,9 @@ import { parseEmotion } from './emotionParser'
 import type { PromptLoader } from './promptLoader'
 import { SentenceSplitter } from './sentenceSplitter'
 
+/** 最終対話からこの秒数以内はランダムトークをスキップ */
+const RANDOM_TALK_COOLDOWN_SEC = 60
+
 export type OrchestratorDeps = {
   getSettings: () => AppSettings
   promptLoader: PromptLoader
@@ -24,14 +27,25 @@ export class ConversationOrchestrator {
   private history: ChatMessage[] = []
   private abortController: AbortController | null = null
   private busy = false
-  /** 文の emit 順序を保証するチェーン（TTS は先行開始） */
   private emitChain: Promise<void> = Promise.resolve()
   private ttsWarned = false
+  private lastInteractionAt = 0
 
   constructor(private readonly deps: OrchestratorDeps) {}
 
   isBusy(): boolean {
     return this.busy
+  }
+
+  /** ランダムトーク可否（生成中・直近対話から60秒以内は不可） */
+  canRandomTalk(): boolean {
+    if (this.busy) return false
+    const elapsed = (Date.now() - this.lastInteractionAt) / 1000
+    return elapsed >= RANDOM_TALK_COOLDOWN_SEC
+  }
+
+  markInteraction(): void {
+    this.lastInteractionAt = Date.now()
   }
 
   interrupt(): void {
@@ -46,23 +60,53 @@ export class ConversationOrchestrator {
   async sendUserMessage(text: string): Promise<void> {
     const trimmed = text.trim()
     if (!trimmed) return
+    this.markInteraction()
+    await this.runChat({
+      userText: trimmed,
+      addUserToHistory: true,
+      randomTalk: false,
+    })
+  }
 
+  /** ランダムトーク（システムプロンプトにバリエーションを足して一言生成） */
+  async sendRandomTalk(): Promise<void> {
+    if (!this.canRandomTalk()) return
+    this.markInteraction()
+    await this.runChat({
+      userText: '（いまの気持ちを、短くひとりごとで言って）',
+      addUserToHistory: false,
+      randomTalk: true,
+    })
+  }
+
+  private async runChat(options: {
+    userText: string
+    addUserToHistory: boolean
+    randomTalk: boolean
+  }): Promise<void> {
     this.interrupt()
 
     const settings = this.deps.getSettings()
     const provider = createLLMProvider(settings.llm)
     const voice = createVoiceEngine(settings.voice)
-    const system = this.deps.promptLoader.buildSystemPrompt({
-      name: settings.character.name,
-    })
+    const system = this.deps.promptLoader.buildSystemPrompt(
+      { name: settings.character.name },
+      { randomTalk: options.randomTalk },
+    )
 
-    this.history.push({ role: 'user', content: trimmed })
-    this.trimHistory(settings.llm.contextLimit)
+    if (options.addUserToHistory) {
+      this.history.push({ role: 'user', content: options.userText })
+      this.trimHistory(settings.llm.contextLimit)
+    }
 
     const messages: ChatMessage[] = [
       { role: 'system', content: system },
       ...this.history,
     ]
+
+    if (!options.addUserToHistory) {
+      messages.push({ role: 'user', content: options.userText })
+    }
 
     this.busy = true
     this.ttsWarned = false
@@ -93,7 +137,6 @@ export class ConversationOrchestrator {
         this.queueSegment(rest, settings, voice, controller)
       }
 
-      // 先読み中の TTS/emit 完了を待つ
       await this.emitChain
 
       if (assistantText.trim() && !controller.signal.aborted) {
@@ -115,6 +158,7 @@ export class ConversationOrchestrator {
         this.busy = false
         this.sendThinking(false)
       }
+      this.markInteraction()
     }
   }
 
@@ -141,9 +185,6 @@ export class ConversationOrchestrator {
     }
   }
 
-  /**
-   * TTS を即座に開始しつつ、完成順を emitChain で保証する（先読み合成）
-   */
   private queueSegment(
     sentence: string,
     settings: AppSettings,

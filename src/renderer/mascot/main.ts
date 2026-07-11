@@ -1,11 +1,16 @@
 import * as PIXI from 'pixi.js'
-import type { Live2DModel } from 'pixi-live2d-display'
 import { createSpeechPlayer } from './audio/player'
 import { createBalloon, type BalloonController } from './balloon/balloon'
 import './balloon/balloon.css'
 import { setupInteraction } from './interaction'
+import {
+  applyEmotion,
+  playMotionSafe,
+  resolveTapMotion,
+} from './live2d/emotion'
 import { findModelPath, loadCubismCore, showMessage } from './live2d/loader'
 import { createLive2DStage } from './live2d/stage'
+import type { AppSettings } from '../../shared/settings'
 
 /** 設定の modelPath を Live2D が読める URL にする */
 function toModelUrl(modelPath: string): string {
@@ -15,8 +20,11 @@ function toModelUrl(modelPath: string): string {
     modelPath.startsWith('file://') ||
     modelPath.startsWith('/')
   ) {
-    // Vite public 配下の相対 URL はそのまま
-    if (modelPath.startsWith('/') && !modelPath.startsWith('/Users') && !modelPath.match(/^\/[A-Za-z]:/)) {
+    if (
+      modelPath.startsWith('/') &&
+      !modelPath.startsWith('/Users') &&
+      !modelPath.match(/^\/[A-Za-z]:/)
+    ) {
       return modelPath
     }
     if (modelPath.startsWith('http') || modelPath.startsWith('file')) {
@@ -26,6 +34,17 @@ function toModelUrl(modelPath: string): string {
   const normalized = modelPath.replace(/\\/g, '/')
   const withSlash = normalized.startsWith('/') ? normalized : `/${normalized}`
   return encodeURI(`file://${withSlash}`)
+}
+
+function tapPrompt(hits: string[]): string {
+  const lower = hits.map((h) => h.toLowerCase())
+  if (lower.some((h) => h.includes('head'))) {
+    return '（頭をなでられた。短くひとこと反応して）'
+  }
+  if (lower.some((h) => h.includes('body'))) {
+    return '（体をつつかれた。短くひとこと反応して）'
+  }
+  return '（触られた。短くひとこと反応して）'
 }
 
 async function main(): Promise<void> {
@@ -48,7 +67,9 @@ async function main(): Promise<void> {
   const { Live2DModel } = await import('pixi-live2d-display/cubism4')
   Live2DModel.registerTicker(PIXI.Ticker)
 
-  const settings = await window.ukaga.getSettings()
+  let settings = await window.ukaga.getSettings()
+  let emotionMap = settings.character.emotionMap
+
   let modelPath =
     (settings.character.modelPath &&
       toModelUrl(settings.character.modelPath)) ||
@@ -78,6 +99,7 @@ async function main(): Promise<void> {
     getModel: () => stage.model,
     getVolumeScale: () => volumeScale,
     onSegmentStart: (segment) => {
+      applyEmotion(stage.model, segment.emotion, emotionMap)
       balloon.appendAssistant(segment.text, segment.emotion)
     },
   })
@@ -97,9 +119,15 @@ async function main(): Promise<void> {
     balloon.bumpFade()
   })
 
-  window.ukaga.onSettingsChanged((next) => {
+  window.ukaga.onSettingsChanged((next: AppSettings) => {
+    const prevScale = settings.character.scale
+    settings = next
     volumeScale = next.voice.volumeScale
-    stage.setUserScale(next.character.scale)
+    emotionMap = next.character.emotionMap
+    // スケールが変わったときだけ再レイアウト（他設定のトグルで拡大しない）
+    if (next.character.scale !== prevScale) {
+      stage.setUserScale(next.character.scale)
+    }
   })
 
   window.ukaga.onReloadCharacter(async (payload) => {
@@ -121,7 +149,19 @@ async function main(): Promise<void> {
   setupInteraction(stage.app, {
     getModel: () => stage.model,
     isOverUi: (x, y) => balloon.containsPoint(x, y),
-    onModelClick: () => balloon.show(),
+    onModelClick: (info) => {
+      const hits = info.hits
+      if (hits.length > 0) {
+        const motion = resolveTapMotion(hits)
+        playMotionSafe(stage.model, motion)
+        balloon.show()
+        player.clear()
+        window.ukaga.sendChat({ text: tapPrompt(hits) })
+        return
+      }
+      // ヒットエリア外だがモデル上 → バルーンを開く
+      balloon.show()
+    },
   })
 
   window.addEventListener('contextmenu', (event) => {

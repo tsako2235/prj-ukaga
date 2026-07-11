@@ -14,6 +14,7 @@ import {
   createDefaultPromptLoader,
   type PromptLoader,
 } from './conversation/promptLoader'
+import { RandomTalkScheduler } from './conversation/randomTalk'
 import { createLLMProvider } from './llm/factory'
 import { getSettings, setSettings } from './settings/store'
 import { createVoiceEngine } from './voice/factory'
@@ -34,6 +35,7 @@ let mascotWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let orchestrator: ConversationOrchestrator | null = null
 let promptLoader: PromptLoader | null = null
+let randomTalk: RandomTalkScheduler | null = null
 
 function resolveResource(...parts: string[]): string {
   if (!app.isPackaged) {
@@ -119,6 +121,7 @@ function registerIpcHandlers(): void {
       const next = setSettings(payload.patch)
       applyBehaviorSettings(next)
       broadcastSettings(next)
+      randomTalk?.reschedule()
 
       const modelChanged =
         prev.character.modelPath !== next.character.modelPath ||
@@ -285,6 +288,13 @@ app.whenReady().then(() => {
     getMascotWindow: () => mascotWindow,
   })
 
+  randomTalk = new RandomTalkScheduler({
+    getSettings,
+    canFire: () => orchestrator?.canRandomTalk() ?? false,
+    onFire: () => orchestrator?.sendRandomTalk(),
+  })
+  randomTalk.start()
+
   registerIpcHandlers()
   applyBehaviorSettings(getSettings())
   mascotWindow = createMascotWindow(getSettings().window)
@@ -304,6 +314,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', () => {
+  randomTalk?.stop()
   promptLoader?.dispose()
   tray?.destroy()
   tray = null
