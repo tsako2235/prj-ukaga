@@ -291,6 +291,8 @@ app.whenReady().then(() => {
   randomTalk = new RandomTalkScheduler({
     getSettings,
     canFire: () => orchestrator?.canRandomTalk() ?? false,
+    getCooldownRemainingSec: () =>
+      orchestrator?.getRandomTalkCooldownRemainingSec() ?? 5,
     onFire: () => orchestrator?.sendRandomTalk(),
   })
   randomTalk.start()

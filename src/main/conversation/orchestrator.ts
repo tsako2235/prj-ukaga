@@ -10,7 +10,7 @@ import { parseEmotion } from './emotionParser'
 import type { PromptLoader } from './promptLoader'
 import { SentenceSplitter } from './sentenceSplitter'
 
-/** 最終対話からこの秒数以内はランダムトークをスキップ */
+/** 最終対話からこの秒数以内はランダムトークをスキップ（計画値） */
 const RANDOM_TALK_COOLDOWN_SEC = 60
 
 export type OrchestratorDeps = {
@@ -29,6 +29,7 @@ export class ConversationOrchestrator {
   private busy = false
   private emitChain: Promise<void> = Promise.resolve()
   private ttsWarned = false
+  /** 0 のときは「まだ対話していない」＝クールダウンなし */
   private lastInteractionAt = 0
 
   constructor(private readonly deps: OrchestratorDeps) {}
@@ -40,8 +41,17 @@ export class ConversationOrchestrator {
   /** ランダムトーク可否（生成中・直近対話から60秒以内は不可） */
   canRandomTalk(): boolean {
     if (this.busy) return false
+    if (this.lastInteractionAt === 0) return true
     const elapsed = (Date.now() - this.lastInteractionAt) / 1000
     return elapsed >= RANDOM_TALK_COOLDOWN_SEC
+  }
+
+  /** クールダウン残り秒（0 なら発火可能） */
+  getRandomTalkCooldownRemainingSec(): number {
+    if (this.busy) return 5
+    if (this.lastInteractionAt === 0) return 0
+    const elapsed = (Date.now() - this.lastInteractionAt) / 1000
+    return Math.max(0, RANDOM_TALK_COOLDOWN_SEC - elapsed)
   }
 
   markInteraction(): void {

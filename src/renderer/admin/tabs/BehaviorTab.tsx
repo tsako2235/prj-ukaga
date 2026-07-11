@@ -12,7 +12,10 @@ export function BehaviorTab({ settings, patchSettings }: Props) {
   return (
     <section className="tab-panel">
       <h1>挙動設定</h1>
-      <p className="tab-lead">ランダムトークや常駐の振る舞いです。</p>
+      <p className="tab-lead">
+        ランダムトークや常駐の振る舞いです。間隔は最小〜最大の一様乱数です（両方
+        30 なら約30秒ごと）。ただし会話・タップの直後は計画どおり約60秒間発火しません。
+      </p>
 
       <label className="field checkbox">
         <input
