@@ -1,0 +1,271 @@
+# =============================================================================
+# Secrets & credentials (never commit these)
+# =============================================================================
+
+# Environment / config with secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+*.local
+*.local.*
+secrets/
+**/secrets/
+**/secret/
+credentials/
+**/credentials/
+**/credential/
+
+# API keys, tokens, passwords
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+*.jks
+*.keystore
+*.truststore
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+id_dsa
+id_dsa.*
+id_ecdsa
+id_ecdsa.*
+*.ppk
+*.kdbx
+*.gpg
+*.asc
+auth.json
+credentials.json
+service-account*.json
+*-credentials.json
+*-service-account.json
+client_secret*.json
+token.json
+tokens.json
+.secrets
+.secret
+secrets.yaml
+secrets.yml
+secrets.toml
+secrets.json
+*.secret
+*.secrets
+
+# Cloud / provider credentials
+.aws/
+.aws/credentials
+.azure/
+.gcloud/
+.gcp/
+.kube/config
+.docker/config.json
+.npmrc
+.pypirc
+.netrc
+.pgpass
+.my.cnf
+.htpasswd
+firebase-adminsdk*.json
+google-services.json
+GoogleService-Info.plist
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.tfstate*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Mobile / app signing
+*.jks
+*.keystore
+*.mobileprovision
+*.provisionprofile
+google-play-*.json
+AppStoreConnect*.p8
+AuthKey_*.p8
+
+# =============================================================================
+# OS junk
+# =============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# =============================================================================
+# Editors / IDEs
+# =============================================================================
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+!.vscode/launch.json.example
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+.project
+.classpath
+.settings/
+*.code-workspace
+
+# =============================================================================
+# Logs & debug
+# =============================================================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.pid
+*.seed
+
+# =============================================================================
+# Dependencies & build output
+# =============================================================================
+node_modules/
+bower_components/
+jspm_packages/
+.pnp/
+.pnp.js
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+dist/
+build/
+out/
+.next/
+.nuxt/
+.output/
+.vercel/
+.netlify/
+.turbo/
+.cache/
+.parcel-cache/
+.svelte-kit/
+coverage/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+.Python
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.tox/
+htmlcov/
+.coverage
+.coverage.*
+
+# Go
+bin/
+pkg/
+*.exe
+*.test
+*.out
+
+# Rust
+target/
+debug/
+release/
+
+# Java / JVM
+*.class
+*.jar
+*.war
+*.ear
+.gradle/
+.mvn/
+
+# Ruby
+vendor/bundle/
+.bundle/
+
+# PHP
+vendor/
+.phpunit.result.cache
+
+# =============================================================================
+# Local / personal / temporary
+# =============================================================================
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+*.rej
+*.swp
+tmp/
+temp/
+.local/
+*.local.md
+ReadMe_local.md
+
+# Databases (local dumps may contain PII)
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.dump
+*.sql.gz
+dump.rdb
+
+# Archives that may hold secrets by mistake
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+# =============================================================================
+# Misc security-sensitive patterns
+# =============================================================================
+# Private keys / cert chains sometimes named oddly
+*_rsa
+*_dsa
+*_ed25519
+*_ecdsa
+*.pkcs12
+*.pkcs8
+
+# Session / cookie stores
+cookies.txt
+*.cookie
+.session
+sessions/
+
+# =============================================================================
+# Custom
+# =============================================================================
+.ReadMe_local.md
