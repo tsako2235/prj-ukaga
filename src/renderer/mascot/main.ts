@@ -190,6 +190,13 @@ async function main(): Promise<void> {
     }
   })
 
+  window.ukaga.onMascotHighlight(({ highlight }) => {
+    const appEl = document.getElementById('app')
+    if (appEl) {
+      appEl.classList.toggle('highlight-bounds', highlight)
+    }
+  })
+
   setupInteraction(stage.app, {
     getModel: () => stage.model,
     isOverUi: (x, y) => balloon.containsPoint(x, y),

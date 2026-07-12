@@ -43,6 +43,9 @@ const api: UkagaApi = {
   ensureWindowSize: (payload: MascotEnsureWindowSizePayload) => {
     ipcRenderer.send(IpcChannels.mascotEnsureWindowSize, payload)
   },
+  setMascotHighlight: (payload: { highlight: boolean }) => {
+    ipcRenderer.send(IpcChannels.mascotHighlight, payload)
+  },
   sendChat: (payload: ChatSendPayload) => {
     ipcRenderer.send(IpcChannels.chatSend, payload)
   },
@@ -116,6 +119,8 @@ const api: UkagaApi = {
       IpcChannels.mascotReloadCharacter,
       handler,
     ),
+  onMascotHighlight: (handler) =>
+    subscribe<{ highlight: boolean }>(IpcChannels.mascotHighlight, handler),
 }
 
 contextBridge.exposeInMainWorld('ukaga', api)

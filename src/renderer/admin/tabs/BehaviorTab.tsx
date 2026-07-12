@@ -20,6 +20,18 @@ export function BehaviorTab({ settings, updateDraft }: Props) {
   const [widthStr, setWidthStr] = useState(String(settings.window.width))
   const [heightStr, setHeightStr] = useState(String(settings.window.height))
 
+  const [isPressingPreview, setIsPressingPreview] = useState(false)
+
+  const startPreview = () => {
+    setIsPressingPreview(true)
+    window.ukaga.setMascotHighlight({ highlight: true })
+  }
+
+  const stopPreview = () => {
+    setIsPressingPreview(false)
+    window.ukaga.setMascotHighlight({ highlight: false })
+  }
+
   // props 変更時の同期
   useEffect(() => {
     setMinSecStr(String(behavior.randomTalkIntervalMinSec))
@@ -168,6 +180,21 @@ export function BehaviorTab({ settings, updateDraft }: Props) {
             onKeyDown={(e) => e.key === 'Enter' && commitHeight()}
           />
         </label>
+      </div>
+
+      <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <button
+          type="button"
+          onMouseDown={startPreview}
+          onMouseUp={stopPreview}
+          onMouseLeave={isPressingPreview ? stopPreview : undefined}
+          style={{ userSelect: 'none' }}
+        >
+          {isPressingPreview ? '範囲を表示中...' : '適用範囲をプレビュー（長押し）'}
+        </button>
+        <span className="field-help" style={{ margin: 0 }}>
+          ※ボタンを押している間、デスクトップ上のマスコットの可動範囲が半透明ピンクで表示されます。
+        </span>
       </div>
 
       <h2>デバッグ</h2>

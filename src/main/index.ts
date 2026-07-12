@@ -135,6 +135,15 @@ function registerIpcHandlers(): void {
     },
   )
 
+  ipcMain.on(
+    IpcChannels.mascotHighlight,
+    (_event, payload: { highlight: boolean }) => {
+      if (mascotWindow && !mascotWindow.isDestroyed()) {
+        mascotWindow.webContents.send(IpcChannels.mascotHighlight, payload)
+      }
+    },
+  )
+
   ipcMain.on(IpcChannels.chatSend, (_event, payload: ChatSendPayload) => {
     void orchestrator?.sendUserMessage(payload.text)
   })

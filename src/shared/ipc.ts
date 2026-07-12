@@ -18,6 +18,7 @@ export const IpcChannels = {
   mascotSetIgnoreMouseEvents: 'mascot:setIgnoreMouseEvents',
   mascotReloadCharacter: 'mascot:reloadCharacter',
   mascotEnsureWindowSize: 'mascot:ensureWindowSize',
+  mascotHighlight: 'mascot:highlight',
   chatSend: 'chat:send',
   chatInterrupt: 'chat:interrupt',
   speechSegment: 'speech:segment',
@@ -117,6 +118,7 @@ export type UkagaApi = {
   setPosition: (payload: MascotSetPositionPayload) => void
   setIgnoreMouseEvents: (payload: MascotSetIgnoreMouseEventsPayload) => void
   ensureWindowSize: (payload: MascotEnsureWindowSizePayload) => void
+  setMascotHighlight: (payload: { highlight: boolean }) => void
   sendChat: (payload: ChatSendPayload) => void
   interruptChat: () => void
   getSettings: () => Promise<AppSettings>
@@ -147,5 +149,8 @@ export type UkagaApi = {
   onPersonaChanged: (handler: (content: string) => void) => () => void
   onReloadCharacter: (
     handler: (payload: MascotReloadCharacterPayload) => void,
+  ) => () => void
+  onMascotHighlight: (
+    handler: (payload: { highlight: boolean }) => void,
   ) => () => void
 }
