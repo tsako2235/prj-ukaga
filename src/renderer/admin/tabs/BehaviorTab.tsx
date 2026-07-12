@@ -197,6 +197,70 @@ export function BehaviorTab({ settings, updateDraft }: Props) {
         </span>
       </div>
 
+      <h2>つつき時プロンプト</h2>
+      <p className="tab-lead">
+        キャラクターをつついた（突いた）際にAIに送るプロンプト（指示や出来事の描写）をカスタマイズできます。
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
+        <label className="field">
+          <span>頭をつついた時</span>
+          <input
+            type="text"
+            style={{ width: '100%' }}
+            value={behavior.tapPrompts?.head ?? ''}
+            onChange={(e) =>
+              updateDraft({
+                behavior: {
+                  tapPrompts: {
+                    head: e.target.value,
+                    body: behavior.tapPrompts?.body ?? '',
+                    other: behavior.tapPrompts?.other ?? '',
+                  },
+                },
+              })
+            }
+          />
+        </label>
+        <label className="field">
+          <span>体をつついた時</span>
+          <input
+            type="text"
+            style={{ width: '100%' }}
+            value={behavior.tapPrompts?.body ?? ''}
+            onChange={(e) =>
+              updateDraft({
+                behavior: {
+                  tapPrompts: {
+                    head: behavior.tapPrompts?.head ?? '',
+                    body: e.target.value,
+                    other: behavior.tapPrompts?.other ?? '',
+                  },
+                },
+              })
+            }
+          />
+        </label>
+        <label className="field">
+          <span>その他（ヒットエリア外など）</span>
+          <input
+            type="text"
+            style={{ width: '100%' }}
+            value={behavior.tapPrompts?.other ?? ''}
+            onChange={(e) =>
+              updateDraft({
+                behavior: {
+                  tapPrompts: {
+                    head: behavior.tapPrompts?.head ?? '',
+                    body: behavior.tapPrompts?.body ?? '',
+                    other: e.target.value,
+                  },
+                },
+              })
+            }
+          />
+        </label>
+      </div>
+
       <h2>デバッグ</h2>
       <p className="tab-lead">
         動確用です。ON にすると吹き出しに感情タグ（例: [happy]）も表示します。

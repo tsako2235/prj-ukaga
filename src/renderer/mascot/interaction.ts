@@ -15,6 +15,7 @@ export type InteractionOptions = {
   getModel: () => Live2DModel
   isOverUi?: (clientX: number, clientY: number) => boolean
   onModelClick?: (info: ModelClickInfo) => void
+  onModelDoubleClick?: (info: ModelClickInfo) => void
   onMascotPositionChange?: (pos: { x: number; y: number }) => void
 }
 
@@ -48,7 +49,17 @@ export function setupInteraction(
     const model = options.getModel()
     const { x, y } = canvasPoint(clientX, clientY)
     try {
-      return model.hitTest(x, y) ?? []
+      const hits = model.hitTest(x, y) ?? []
+      if (hits.length > 0) return hits
+
+      // モデル定義にHitAreasがない場合のフォールバック判定
+      const bounds = model.getBounds(true)
+      if (bounds.contains(x, y)) {
+        // モデルのY座標の上部35%以内なら頭(Head)、それ以外なら体(Body)とする
+        const relativeY = (y - bounds.top) / bounds.height
+        return relativeY < 0.35 ? ['Head'] : ['Body']
+      }
+      return []
     } catch {
       return []
     }
@@ -106,13 +117,35 @@ export function setupInteraction(
     setClickThrough(!hit)
   }
 
+  function isInteractiveUiTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof Element)) return false
+    return Boolean(
+      target.closest(
+        'button, input, textarea, select, a, .balloon-messages, .balloon-form',
+      ),
+    )
+  }
+
   function onMouseDown(event: MouseEvent): void {
     if (event.button !== 0) return
-    if (options.isOverUi?.(event.clientX, event.clientY)) {
+
+    // 入力欄やボタンなど、具体的なUI要素をクリックした場合はUI操作を最優先する
+    if (isInteractiveUiTarget(event.target)) {
       interactive = true
       setClickThrough(false)
       return
     }
+
+    const hits = hitAreasAt(event.clientX, event.clientY)
+    const hasHitArea = hits.length > 0
+
+    // UI要素以外のバルーン領域内（背景など）であり、かつモデルのヒットエリア上でもない場合は、UI操作として扱う
+    if (!hasHitArea && options.isOverUi?.(event.clientX, event.clientY)) {
+      interactive = true
+      setClickThrough(false)
+      return
+    }
+
     if (!isOverModel(event.clientX, event.clientY)) return
 
     dragging = true
@@ -146,9 +179,22 @@ export function setupInteraction(
     setClickThrough(!hit)
   }
 
+  function onDblClick(event: MouseEvent): void {
+    if (event.button !== 0) return
+    if (isInteractiveUiTarget(event.target)) return
+    if (!isOverModel(event.clientX, event.clientY)) return
+
+    options.onModelDoubleClick?.({
+      clientX: event.clientX,
+      clientY: event.clientY,
+      hits: hitAreasAt(event.clientX, event.clientY),
+    })
+  }
+
   window.addEventListener('mousemove', onMouseMove)
   window.addEventListener('mousedown', onMouseDown)
   window.addEventListener('mouseup', onMouseUp)
+  window.addEventListener('dblclick', onDblClick)
   window.addEventListener('blur', () => {
     dragging = false
   })

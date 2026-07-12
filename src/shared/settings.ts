@@ -36,6 +36,11 @@ export interface AppSettings {
     alwaysOnTop: boolean
     openAtLogin: boolean
     adminAlwaysOnTop: boolean
+    tapPrompts?: {
+      head: string
+      body: string
+      other: string
+    }
   }
   debug: {
     /** ON のときバルーンに感情タグ（[happy] 等）を表示する */
@@ -92,6 +97,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
     alwaysOnTop: true,
     openAtLogin: false,
     adminAlwaysOnTop: false,
+    tapPrompts: {
+      head: '（頭をなでられた。短くひとこと反応して）',
+      body: '（体をつつかれた。短くひとこと反応して）',
+      other: '（触られた。短くひとこと反応して）',
+    },
   },
   debug: {
     enabled: false,

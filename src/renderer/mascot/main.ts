@@ -42,15 +42,20 @@ function toModelUrl(modelPath: string): string {
   return encodeURI(`file://${withSlash}`)
 }
 
-function tapPrompt(hits: string[]): string {
+function getTapPrompt(hits: string[], settings: AppSettings): string {
+  const prompts = settings.behavior.tapPrompts || {
+    head: '（頭をなでられた。短くひとこと反応して）',
+    body: '（体をつつつかれた。短くひとこと反応して）',
+    other: '（触られた。短くひとこと反応して）',
+  }
   const lower = hits.map((h) => h.toLowerCase())
   if (lower.some((h) => h.includes('head'))) {
-    return '（頭をなでられた。短くひとこと反応して）'
+    return prompts.head
   }
   if (lower.some((h) => h.includes('body'))) {
-    return '（体をつつかれた。短くひとこと反応して）'
+    return prompts.body
   }
-  return '（触られた。短くひとこと反応して）'
+  return prompts.other
 }
 
 async function main(): Promise<void> {
@@ -205,12 +210,11 @@ async function main(): Promise<void> {
       if (hits.length > 0) {
         const motion = resolveTapMotion(hits)
         playMotionSafe(stage.model, motion)
-        balloon.show()
         player.clear()
-        window.ukaga.sendChat({ text: tapPrompt(hits) })
-        return
+        window.ukaga.sendChat({ text: getTapPrompt(hits, settings) })
       }
-      // ヒットエリア外だがモデル上 → バルーンを開く
+    },
+    onModelDoubleClick: (info) => {
       balloon.show()
     },
     onMascotPositionChange: (pos) => {
