@@ -119,6 +119,17 @@ export function BehaviorTab({ settings, updateDraft }: Props) {
       <label className="field checkbox">
         <input
           type="checkbox"
+          checked={behavior.adminAlwaysOnTop ?? false}
+          onChange={(e) =>
+            updateDraft({ behavior: { adminAlwaysOnTop: e.target.checked } })
+          }
+        />
+        <span>管理画面を常に最前面に表示</span>
+      </label>
+
+      <label className="field checkbox">
+        <input
+          type="checkbox"
           checked={behavior.openAtLogin}
           onChange={(e) =>
             updateDraft({ behavior: { openAtLogin: e.target.checked } })

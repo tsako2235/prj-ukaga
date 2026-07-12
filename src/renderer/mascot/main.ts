@@ -206,6 +206,11 @@ async function main(): Promise<void> {
       // ヒットエリア外だがモデル上 → バルーンを開く
       balloon.show()
     },
+    onMascotPositionChange: (pos) => {
+      void window.ukaga.setSettings({
+        patch: { window: { x: pos.x, y: pos.y } },
+      })
+    },
   })
 
   window.addEventListener('contextmenu', (event) => {

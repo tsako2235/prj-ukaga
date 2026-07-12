@@ -1,5 +1,6 @@
 import { BrowserWindow } from 'electron'
 import { join } from 'path'
+import { getSettings } from '../settings/store'
 
 let adminWindow: BrowserWindow | null = null
 
@@ -12,6 +13,9 @@ export function createAdminWindow(): BrowserWindow {
     return adminWindow
   }
 
+  const settings = getSettings()
+  const alwaysOnTop = settings.behavior.adminAlwaysOnTop ?? false
+
   const win = new BrowserWindow({
     width: 880,
     height: 640,
@@ -19,6 +23,7 @@ export function createAdminWindow(): BrowserWindow {
     minHeight: 480,
     title: 'ukaga 設定',
     show: false,
+    alwaysOnTop,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,

@@ -76,6 +76,12 @@ function applyBehaviorSettings(settings: AppSettings): void {
     }
   }
 
+  const adminWin = getAdminWindow()
+  if (adminWin && !adminWin.isDestroyed()) {
+    const adminOnTop = settings.behavior.adminAlwaysOnTop ?? false
+    adminWin.setAlwaysOnTop(adminOnTop)
+  }
+
   app.setLoginItemSettings({
     openAtLogin: settings.behavior.openAtLogin,
   })

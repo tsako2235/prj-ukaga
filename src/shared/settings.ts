@@ -35,6 +35,7 @@ export interface AppSettings {
     randomTalkIntervalMaxSec: number
     alwaysOnTop: boolean
     openAtLogin: boolean
+    adminAlwaysOnTop: boolean
   }
   debug: {
     /** ON のときバルーンに感情タグ（[happy] 等）を表示する */
@@ -90,6 +91,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     randomTalkIntervalMaxSec: 600,
     alwaysOnTop: true,
     openAtLogin: false,
+    adminAlwaysOnTop: false,
   },
   debug: {
     enabled: false,

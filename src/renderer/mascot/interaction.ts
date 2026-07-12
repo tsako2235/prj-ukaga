@@ -15,6 +15,7 @@ export type InteractionOptions = {
   getModel: () => Live2DModel
   isOverUi?: (clientX: number, clientY: number) => boolean
   onModelClick?: (info: ModelClickInfo) => void
+  onMascotPositionChange?: (pos: { x: number; y: number }) => void
 }
 
 /**
@@ -130,6 +131,12 @@ export function setupInteraction(
         clientX: event.clientX,
         clientY: event.clientY,
         hits: hitAreasAt(event.clientX, event.clientY),
+      })
+    }
+    if (dragging && dragMoved) {
+      options.onMascotPositionChange?.({
+        x: event.screenX - dragOffsetX,
+        y: event.screenY - dragOffsetY,
       })
     }
     dragging = false
