@@ -39,6 +39,12 @@ function toModelUrl(modelPath: string): string {
   }
   const normalized = modelPath.replace(/\\/g, '/')
   const withSlash = normalized.startsWith('/') ? normalized : `/${normalized}`
+
+  // 開発時（Vite経由でオリジンがhttpから始まる場合）は、file:// ではなく Vite の @fs を経由して読み込む
+  if (window.location.origin.startsWith('http')) {
+    return `${window.location.origin}/@fs${withSlash}`
+  }
+
   return encodeURI(`file://${withSlash}`)
 }
 
